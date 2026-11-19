@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MuseCat Auto Share — Stream-Safe Clip Automation</title>
+  <meta name="description" content="100% Free, Stream-Safe OBS Studio + Aitum Vertical clip auto-uploader for YouTube Shorts, Google Drive, Instagram Reels & TikTok." />
+  <style>
+    :root {
+      --bg: #090d1a;
+      --card: #12182b;
+      --border: #243052;
+      --text: #eef2ff;
+      --muted: #9aa7cc;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at top, #181a3d 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 48px 20px 64px; }
+    .hero {
+      text-align: center;
+      padding: 40px 24px;
+      background: rgba(18, 24, 43, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      margin-bottom: 32px;
+    }
+    .logo {
+      width: 112px;
+      height: 112px;
+      border-radius: 24px;
+      border: 2px solid var(--cyan);
+      margin-bottom: 16px;
+      box-shadow: 0 12px 32px rgba(34, 211, 238, 0.2);
+    }
+    h1 { margin: 0 0 10px; font-size: 36px; }
+    .subtitle { max-width: 680px; margin: 0 auto 26px; color: var(--muted); font-size: 17px; }
+    .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 13px 26px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 15px;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #1e2947; color: var(--text); border: 1px solid var(--border); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 17px; color: var(--cyan); }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--cyan); text-decoration: none; margin: 0 10px; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <img src="logo.png" alt="MuseCat Auto Share Logo" class="logo" />
+      <h1>MuseCat Auto Share</h1>
+      <p class="subtitle">
+        100% Free, Stream-Safe Windows desktop tool for Kick, Twitch &amp; YouTube streamers.
+        Automatically watches your OBS Studio + Aitum Vertical clips, backs them up to Google Drive,
+        and publishes them to YouTube Shorts, Instagram Reels, and TikTok using official APIs.
+      </p>
+      <div class="btns">
+        <a class="btn btn-primary" href="https://github.com/msuygun-collab/musecat-auto-share/releases/latest">Download for Windows (.exe)</a>
+        <a class="btn btn-secondary" href="https://github.com/msuygun-collab/musecat-auto-share">View on GitHub</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Stream-Safe Mode</h3>
+        <p>Runs silently in the system tray with zero pop-ups or upload bandwidth spikes during live gameplay. Publish your entire clip queue after your stream with one click.</p>
+      </div>
+      <div class="card">
+        <h3>4 Official Platforms</h3>
+        <p>Uses official YouTube Data API v3, Google Drive API v3, Meta Instagram Graph API, and TikTok Content Posting API v2.</p>
+      </div>
+      <div class="card">
+        <h3>100% Local &amp; Private</h3>
+        <p>Your videos, OAuth tokens, and settings stay strictly on your own computer. No external tracking servers or third-party relays.</p>
+      </div>
+      <div class="card">
+        <h3>English &amp; Turkish UI</h3>
+        <p>Switch seamlessly between English and Türkçe inside Settings without restarting the app.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+        <a href="https://github.com/msuygun-collab/musecat-auto-share">GitHub</a>
+      </p>
+      <p>&copy; 2026 MuseCat Auto Share. Contact: msuygun@gmail.com</p>
+    </footer>
+  </div>
+</body>
+</html>
