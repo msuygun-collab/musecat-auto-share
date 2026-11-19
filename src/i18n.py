@@ -55,7 +55,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "tab_settings": "Ayarlar",
         # Queue Tab
         "btn_share_all": "Yayın Bitti → Tüm Kuyruğu Paylaş",
-        "btn_add_test_clip": "Test Klibi Ekle",
+        "btn_add_test_clip": "Manuel Klip Ekle",
         "btn_refresh": "Yenile",
         "btn_clear_completed": "Tamamlananları Temizle",
         "confirm_clear_completed_title": "Tamamlananları Temizle",
@@ -215,7 +215,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "tab_settings": "Settings",
         # Queue Tab
         "btn_share_all": "Stream Ended → Share All Queued",
-        "btn_add_test_clip": "Add Test Clip",
+        "btn_add_test_clip": "Add Clip",
         "btn_refresh": "Refresh",
         "btn_clear_completed": "Clear Completed",
         "confirm_clear_completed_title": "Clear Completed Clips",
