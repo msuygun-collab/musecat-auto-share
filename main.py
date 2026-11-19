@@ -47,7 +47,22 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _set_windows_app_id() -> None:
+    """Assign an explicit Windows AppUserModelID so the taskbar uses the MuseCat icon."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "MuseCat.AutoShare.Desktop.1"
+        )
+    except Exception:
+        pass
+
+
 def main(argv: Optional[list[str]] = None) -> int:
+    _set_windows_app_id()
     setup_logging()
     logger = logging.getLogger("main")
     args = parse_args(argv)

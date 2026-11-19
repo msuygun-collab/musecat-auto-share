@@ -120,6 +120,8 @@ class AutoClipApp(ctk.CTk):
         self.minsize(1020, 680)
         self.configure(fg_color=BG_DARK)
         self._apply_window_icon()
+        # CustomTkinter internally sets a default icon shortly after init; re-apply ours.
+        self.after(250, self._apply_window_icon)
 
         # Handle window close based on user setting (minimize to tray or quit completely)
         self.protocol("WM_DELETE_WINDOW", self._on_window_close)
@@ -604,6 +606,18 @@ class AutoClipApp(ctk.CTk):
         )
         btn_refresh.pack(side="left", padx=(0, 8), pady=10)
 
+        btn_clear_done = ctk.CTkButton(
+            action_bar,
+            text=self._t("btn_clear_completed"),
+            command=self._on_clear_completed_clips,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_RED_HOVER,
+            font=ctk.CTkFont(size=13),
+            height=38,
+            corner_radius=8,
+        )
+        btn_clear_done.pack(side="left", padx=(0, 8), pady=10)
+
         self.queue_summary_lbl = ctk.CTkLabel(
             action_bar,
             text=self._t("queue_summary_zero"),
@@ -820,6 +834,8 @@ class AutoClipApp(ctk.CTk):
 
     def _refresh_queue_list(self) -> None:
         try:
+            if bool(getattr(self.config_manager.config, "auto_remove_deleted_files", False)):
+                self.db.prune_missing_files()
             clips = self.db.list_clips()
         except Exception as exc:
             logger.exception("Klipler listelenirken hata: %s", exc)
@@ -1080,6 +1096,24 @@ class AutoClipApp(ctk.CTk):
         self.set_footer_status(self._t("status_sharing_all"))
         self.worker.process_all_pending()
         self._update_header_indicators()
+
+    def _on_clear_completed_clips(self) -> None:
+        if not messagebox.askyesno(
+            self._t("confirm_clear_completed_title"),
+            self._t("confirm_clear_completed_body"),
+        ):
+            return
+        try:
+            removed = self.db.clear_completed_clips()
+            if removed > 0:
+                self._selected_clip_id = None
+                self._editor_loaded_clip_id = None
+                self.set_footer_status(self._t("status_cleared_completed", count=removed))
+            else:
+                self.set_footer_status(self._t("status_nothing_to_clear"))
+            self.refresh_all_views()
+        except Exception as exc:
+            messagebox.showerror(self._t("err_title"), str(exc))
 
     def _on_add_test_clip(self) -> None:
         file_path = filedialog.askopenfilename(
@@ -2030,6 +2064,15 @@ class AutoClipApp(ctk.CTk):
             variable=self.settings_tray_close_var,
             font=ctk.CTkFont(size=13, weight="bold"),
             progress_color=ACCENT_PRIMARY,
+        ).pack(anchor="w", padx=14, pady=(4, 8))
+
+        self.settings_auto_prune_var = ctk.BooleanVar(value=False)
+        ctk.CTkSwitch(
+            modes_box,
+            text=self._t("settings_auto_prune_switch"),
+            variable=self.settings_auto_prune_var,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            progress_color=ACCENT_PRIMARY,
         ).pack(anchor="w", padx=14, pady=(4, 12))
 
         # Default Active Platforms
@@ -2107,6 +2150,7 @@ class AutoClipApp(ctk.CTk):
         stream_safe = bool(self.settings_stream_var.get())
         dry_run = bool(self.settings_dry_run_var.get())
         minimize_to_tray = bool(self.settings_tray_close_var.get())
+        auto_prune = bool(self.settings_auto_prune_var.get())
         selected_lang = "en" if self.settings_lang_var.get() == LANGUAGE_LABELS["en"] else "tr"
         enabled_platforms = {k: bool(v.get()) for k, v in self.settings_plat_vars.items()}
 
@@ -2116,6 +2160,7 @@ class AutoClipApp(ctk.CTk):
             default_hashtags=new_hashtags,
             stream_safe_mode=stream_safe,
             minimize_to_tray_on_close=minimize_to_tray,
+            auto_remove_deleted_files=auto_prune,
             dry_run=dry_run,
             enabled_platforms=enabled_platforms,
         )
@@ -2243,6 +2288,7 @@ class AutoClipApp(ctk.CTk):
         self.settings_stream_var.set(bool(cfg.stream_safe_mode))
         self.settings_dry_run_var.set(bool(cfg.dry_run))
         self.settings_tray_close_var.set(bool(getattr(cfg, "minimize_to_tray_on_close", True)))
+        self.settings_auto_prune_var.set(bool(getattr(cfg, "auto_remove_deleted_files", False)))
 
         enabled = cfg.enabled_platforms or {}
         for key, var in self.settings_plat_vars.items():

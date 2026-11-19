@@ -54,6 +54,7 @@ class AppConfig:
     language: str = "tr"
     stream_safe_mode: bool = True
     minimize_to_tray_on_close: bool = True
+    auto_remove_deleted_files: bool = False
     dry_run: bool = True
     default_hashtags: str = "#shorts #reels #tiktok #kick #gaming"
     auto_backup_drive: bool = True

@@ -299,6 +299,35 @@ class ClipDatabase:
         with self._lock, self._connect() as conn:
             conn.execute("DELETE FROM clips WHERE id = ?", (clip_id,))
 
+    def clear_completed_clips(self) -> int:
+        """Remove all clips that have no pending or uploading platforms. Returns removed count."""
+        with self._lock, self._connect() as conn:
+            cur = conn.execute(
+                """
+                DELETE FROM clips
+                WHERE status_youtube NOT IN ('pending', 'uploading')
+                  AND status_instagram NOT IN ('pending', 'uploading')
+                  AND status_tiktok NOT IN ('pending', 'uploading')
+                  AND status_gdrive NOT IN ('pending', 'uploading')
+                """
+            )
+            return int(cur.rowcount or 0)
+
+    def prune_missing_files(self) -> int:
+        """Remove clips whose source video file no longer exists on disk. Returns removed count."""
+        with self._lock, self._connect() as conn:
+            rows = conn.execute("SELECT id, file_path FROM clips").fetchall()
+            missing_ids = [
+                int(row["id"])
+                for row in rows
+                if row["file_path"] and not Path(str(row["file_path"])).is_file()
+            ]
+            if not missing_ids:
+                return 0
+            placeholders = ",".join("?" for _ in missing_ids)
+            cur = conn.execute(f"DELETE FROM clips WHERE id IN ({placeholders})", missing_ids)
+            return int(cur.rowcount or 0)
+
     def get_drive_backups(self, limit: int = 200) -> list[ClipRecord]:
         """Return clips that have been backed up to Google Drive, newest first."""
         with self._lock, self._connect() as conn:
