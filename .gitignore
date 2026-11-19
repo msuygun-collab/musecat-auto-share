@@ -1,0 +1,25 @@
+# User data, credentials & tokens (NEVER commit!)
+data/
+*.db
+*.sqlite
+*.log
+
+# Python environments & caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / PyInstaller / Release installer artifacts (upload Setup.exe to GitHub Releases!)
+build/
+dist/
+Release/
+MuseCat Setup/*.exe
+*.spec
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MuseCat Auto Share — Kurulum Rehberi</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #12192e;
+      --border: #253052;
+      --text: #e6ecff;
+      --muted: #9aa7cc;
+      --accent: #6c63ff;
+      --accent2: #22d3ee;
+      --green: #22c55e;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 32px 18px 64px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1b1742, #0f2544);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 30px;
+      margin-bottom: 24px;
+    }
+    header h1 { margin: 0 0 8px; font-size: 28px; }
+    header p { margin: 0; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(108, 99, 255, 0.2);
+      color: #c4b5fd;
+      border: 1px solid rgba(108, 99, 255, 0.45);
+      margin-bottom: 10px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      color: #fff;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    h3 { margin: 18px 0 8px; font-size: 15px; color: var(--accent2); }
+    ol, ul { padding-left: 22px; margin: 8px 0; }
+    li { margin: 6px 0; }
+    code {
+      background: #0a0f1d;
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 6px;
+      color: #93c5fd;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .tip {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(34, 197, 94, 0.1);
+      border-left: 4px solid var(--green);
+      color: #d1fae5;
+      font-size: 14px;
+    }
+    .warn {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 4px solid var(--amber);
+      color: #fef3c7;
+      font-size: 14px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">%100 Ücretsiz Resmi API Kurulumu</span>
+      <h1>MuseCat Auto Share — Kurulum Rehberi</h1>
+      <p>OBS Studio + Aitum Vertical ile tek tuşla aldığınız dikey klipleri yayın akışınızı bozmadan YouTube Shorts, Google Drive, Instagram Reels (+ Facebook) ve TikTok'a otomatik aktarın.</p>
+    </header>
+
+    <div class="card">
+      <h2>1. OBS Studio + Aitum Vertical Klasör Ayarı</h2>
+      <ol>
+        <li>OBS Studio'da <strong>Aitum Vertical</strong> eklentisini kurun ve <strong>Backtrack</strong> özelliğini etkinleştirin (ör. 60 saniye).</li>
+        <li>Aitum Vertical ayarlarında kliplerin kaydedildiği klasörü (ör. <code>C:\Users\Kullanici\Videos</code>) not alın.</li>
+        <li><strong>MuseCat Auto Share → Ayarlar</strong> sekmesinde <strong>OBS Aitum Vertical Klip Klasörü</strong> olarak bu klasörü seçip <strong>Ayarları Kaydet</strong> butonuna basın.</li>
+        <li>Üst bardaki rozet yeşil <strong>İzleniyor</strong> durumuna geçer. <strong>Yayın Modu AÇIK</strong> iken aldığınız klipler yayında ping/drop oluşturmamak için kuyruğa alınır; yayın bitince tek tıkla hepsini paylaşabilirsiniz.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>2. YouTube Shorts &amp; Google Drive Bağlantısı (Tek Dosya ile İkisi Birden)</h2>
+      <ol>
+        <li><a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> adresine girin ve <strong>Yeni Proje</strong> oluşturun (<code>MuseCat Auto Share</code>, konum: <code>No organization</code>).</li>
+        <li>Üst arama çubuğundan sırayla <code>YouTube Data API v3</code> ve <code>Google Drive API</code> aratıp ikisini de <strong>Enable (Etkinleştir)</strong> yapın.</li>
+        <li>Arama çubuğundan <strong>OAuth consent screen / Google Auth Platform</strong> açın → <strong>Get started</strong> → Uygulama adı: <code>MuseCat Auto Share</code>, Hedef kitle: <strong>External (Harici)</strong> seçip oluşturun.</li>
+        <li>Sol menüden <strong>Audience → Test users → + Add users</strong> kısmına kendi Gmail adresinizi ekleyip kaydedin.</li>
+        <li>Sol menüden <strong>Clients → + Create client</strong> → Tür: <strong>Desktop app</strong> (<em>"AI-powered agent"</em> kutucuğunu işaretlemeyin) → <strong>Create</strong> → <strong>Download JSON</strong>.</li>
+        <li><strong>MuseCat Auto Share → Hesaplar &amp; API</strong> sekmesindeki Google kartından <strong>Dosya Seç</strong> ile indirdiğiniz JSON dosyasını seçin ve <strong>YouTube &amp; Drive Bağlantısını Test Et</strong> butonuna basın.</li>
+        <li>Tarayıcı 2 kez arka arkaya açılır (1. YouTube izni, 2. Google Drive izni). İkisini de onayladığınızda bağlantı kalıcı olarak kaydedilir.</li>
+      </ol>
+      <div class="tip">
+        <strong>Google Drive Yedekleme:</strong> Tüm klipleriniz otomatik olarak Google Drive içinde <code>AutoClipShare_Backups/YYYY-AA-GG</code> klasörüne yedeklenir ve aynı zamanda Instagram Reels için ücretsiz video bağlantısı sağlar.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Instagram Reels (+ Facebook Otomatik Paylaşım)</h2>
+      <h3>Ön Hazırlık</h3>
+      <ol>
+        <li>Instagram uygulamasında <strong>Ayarlar → Hesap türü ve araçları → Profesyonel hesaba geç → İçerik Üreticisi</strong> yapın (ücretsizdir, mavi tik gerekmez).</li>
+        <li>Bir Facebook Sayfası oluşturun ve sayfanın <strong>Ayarlar → Bağlı Hesaplar → Instagram</strong> bölümünden Instagram hesabınızı bağlayın.</li>
+      </ol>
+      <h3>Meta Uygulaması &amp; Süresi Dolmayan Token</h3>
+      <ol>
+        <li><a href="https://developers.facebook.com/apps/" target="_blank">Meta for Developers</a> → <strong>Uygulama Oluştur</strong> → Kullanım alanı: <strong>Manage messaging &amp; content on Instagram</strong> → Uygulama adı: <code>MuseCat Auto Share</code>.</li>
+        <li>Sol menüden <strong>Kullanım durumları → Özelleştir → API setup with Unified login</strong> ekranını açın.</li>
+        <li><strong>1. Configure your app</strong> bölümünde <strong>Create new configuration → Create from template</strong> butonuna basın.</li>
+        <li><strong>2. Generate access tokens</strong> bölümünde <strong>Add account</strong> ile hesabınızı <strong>Instagram Tester</strong> olarak ekleyin.</li>
+        <li><a href="https://www.instagram.com/accounts/manage_access/" target="_blank">instagram.com/accounts/manage_access</a> → <strong>Test Kullanıcısı Davetleri</strong> sekmesinden daveti <strong>Kabul Et</strong> yapın.</li>
+        <li>Meta Developers sayfasını yenileyin (<code>F5</code>) → hesabınızın yanındaki <strong>Generate token</strong> butonuna basıp çıkan <strong>Access Token</strong> ve sayısal <strong>Instagram ID</strong> bilgisini kopyalayın.</li>
+        <li><strong>MuseCat Auto Share → Hesaplar &amp; API → Instagram Reels</strong> kartına yapıştırın (Public URL Modu: <code>gdrive</code>) → <strong>Kaydet</strong> → <strong>Instagram Bağlantısını Test Et</strong>.</li>
+      </ol>
+      <div class="tip">
+        <strong>Facebook'ta Otomatik Paylaşım İpucu:</strong> Instagram mobil uygulamasında <em>Ayarlar → Paylaşım ve remiksler → Facebook'ta otomatik paylaş</em> seçeneğini açarsanız, MuseCat Auto Share ile Instagram'a yüklenen her Reels otomatik olarak Facebook sayfanızda da paylaşılır.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. TikTok (Content Posting API)</h2>
+      <ol>
+        <li><a href="https://developers.tiktok.com/" target="_blank">TikTok for Developers</a> portalında ücretsiz geliştirici hesabı açın ve <strong>Manage apps → Create an app</strong> ile <code>MuseCat Auto Share</code> uygulamasını oluşturun.</li>
+        <li>Uygulama içine <strong>Content Posting API</strong> ürününü ekleyin (<code>video.upload</code> ve <code>video.publish</code> kapsamları).</li>
+        <li>Aldığınız <strong>Access Token</strong> bilgisini <strong>MuseCat Auto Share → Hesaplar &amp; API → TikTok</strong> kartına yapıştırıp <strong>Kaydet</strong> deyin.</li>
+      </ol>
+      <div class="warn">
+        <strong>Önemli Bilgi:</strong> TikTok resmi API'si incelemeden (App Review) geçene kadar <code>inbox (Taslaklar)</code> modunda çalışır; videolarınız doğrudan TikTok uygulamanızın Gelen Kutusu / Taslaklar bölümüne düşer ve telefondan tek tıkla yayınlarsınız. Uygulama onayı alındıktan sonra <code>direct (Doğrudan)</code> moduna geçebilirsiniz.
+      </div>
+    </div>
+
+    <footer>
+      MuseCat Auto Share — Yayıncı Klip Otomasyonu
+    </footer>
+  </div>
+</body>
+</html>

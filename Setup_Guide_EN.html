@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MuseCat Auto Share — Setup Guide</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #12192e;
+      --border: #253052;
+      --text: #e6ecff;
+      --muted: #9aa7cc;
+      --accent: #6c63ff;
+      --accent2: #22d3ee;
+      --green: #22c55e;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 32px 18px 64px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1b1742, #0f2544);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 30px;
+      margin-bottom: 24px;
+    }
+    header h1 { margin: 0 0 8px; font-size: 28px; }
+    header p { margin: 0; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(108, 99, 255, 0.2);
+      color: #c4b5fd;
+      border: 1px solid rgba(108, 99, 255, 0.45);
+      margin-bottom: 10px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      color: #fff;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    h3 { margin: 18px 0 8px; font-size: 15px; color: var(--accent2); }
+    ol, ul { padding-left: 22px; margin: 8px 0; }
+    li { margin: 6px 0; }
+    code {
+      background: #0a0f1d;
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 6px;
+      color: #93c5fd;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .tip {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(34, 197, 94, 0.1);
+      border-left: 4px solid var(--green);
+      color: #d1fae5;
+      font-size: 14px;
+    }
+    .warn {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 4px solid var(--amber);
+      color: #fef3c7;
+      font-size: 14px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">100% Free Official API Setup</span>
+      <h1>MuseCat Auto Share — Setup Guide</h1>
+      <p>Automatically queue and publish vertical 9:16 OBS Studio + Aitum Vertical clips to YouTube Shorts, Google Drive, Instagram Reels (+ Facebook), and TikTok without interrupting your live stream.</p>
+    </header>
+
+    <div class="card">
+      <h2>1. OBS Studio + Aitum Vertical Folder Setup</h2>
+      <ol>
+        <li>Install the free <strong>Aitum Vertical</strong> plugin for OBS Studio and enable <strong>Backtrack</strong> (e.g., 60 seconds).</li>
+        <li>Note the folder where Aitum Vertical saves your vertical clips (e.g., <code>C:\Users\YourName\Videos</code>).</li>
+        <li>Open <strong>MuseCat Auto Share → Settings</strong>, pick that folder under <strong>OBS Aitum Vertical Clip Folder</strong>, and click <strong>Save Settings</strong>.</li>
+        <li>Keep <strong>Stream-Safe Mode ON</strong> while live so clips queue quietly with zero ping/frame drop; click <strong>Stream Ended → Share All Queue</strong> when your stream finishes.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>2. YouTube Shorts &amp; Google Drive (One File for Both)</h2>
+      <ol>
+        <li>Open <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> and create a new project (e.g., <code>MuseCat Auto Share</code>).</li>
+        <li>Search and <strong>Enable</strong> both <code>YouTube Data API v3</code> and <code>Google Drive API</code>.</li>
+        <li>Open <strong>Google Auth Platform / OAuth consent screen</strong> → <strong>Get started</strong> → choose <strong>External</strong> and finish setup.</li>
+        <li>Go to <strong>Audience → Test users → + Add users</strong> and add your own Gmail address.</li>
+        <li>Go to <strong>Clients → + Create client</strong> → select <strong>Desktop app</strong> (leave <em>"AI-powered agent"</em> unchecked) → <strong>Create</strong> → <strong>Download JSON</strong>.</li>
+        <li>In <strong>MuseCat Auto Share → Accounts &amp; API</strong>, select your downloaded JSON file and click <strong>Test YouTube &amp; Drive Connection</strong>.</li>
+        <li>Your browser will open twice (1st for YouTube, 2nd for Google Drive). Approve both to save persistent tokens.</li>
+      </ol>
+      <div class="tip">
+        <strong>Free Instagram URL Bridge:</strong> Clips backed up to Google Drive are never duplicated and automatically provide the free public video URL required by Instagram's Reels API.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Instagram Reels (+ Automatic Facebook Cross-Posting)</h2>
+      <h3>Prerequisites</h3>
+      <ol>
+        <li>Switch your Instagram account to a free <strong>Professional (Creator / Business)</strong> account.</li>
+        <li>Link your Instagram account to a Facebook Page (<em>Page Settings → Linked Accounts → Instagram</em>).</li>
+      </ol>
+      <h3>Meta App &amp; Non-Expiring Token</h3>
+      <ol>
+        <li>Open <a href="https://developers.facebook.com/apps/" target="_blank">Meta for Developers</a> → <strong>Create App</strong> → select <strong>Manage messaging &amp; content on Instagram</strong>.</li>
+        <li>Open <strong>Use cases → Customize → API setup with Unified login</strong>.</li>
+        <li>Under <strong>1. Configure your app</strong>, click <strong>Create new configuration → Create from template</strong>.</li>
+        <li>Under <strong>2. Generate access tokens</strong>, click <strong>Add account</strong> and assign your Instagram account as an <strong>Instagram Tester</strong>.</li>
+        <li>Accept the invite at <a href="https://www.instagram.com/accounts/manage_access/" target="_blank">instagram.com/accounts/manage_access</a> → <strong>Tester Invites</strong>.</li>
+        <li>Refresh the Meta Developers page (<code>F5</code>) and click <strong>Generate token</strong> next to your account. Copy the <strong>Access Token</strong> and numeric <strong>Instagram Account ID</strong>.</li>
+        <li>Paste both into <strong>MuseCat Auto Share → Accounts &amp; API → Instagram Reels</strong> (Public URL Mode: <code>gdrive</code>) → <strong>Save</strong> → <strong>Test Connection</strong>.</li>
+      </ol>
+      <div class="tip">
+        <strong>Facebook Cross-Posting Tip:</strong> Enable <em>Share to Facebook automatically</em> in your Instagram mobile app settings so every Reel uploaded by MuseCat Auto Share is automatically posted to your Facebook Page too.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. TikTok (Content Posting API)</h2>
+      <ol>
+        <li>Sign in at <a href="https://developers.tiktok.com/" target="_blank">TikTok for Developers</a>, create an Organization, and create a new app (Type: <strong>Other</strong>).</li>
+        <li>Switch to the <strong>Sandbox</strong> tab and create a Sandbox.</li>
+        <li>Upload a 1024×1024 icon (you can use <code>assets/musecat_icon_1024.png</code>), select Platform: <strong>Desktop</strong>, and add <strong>Login Kit</strong> + <strong>Content Posting API</strong>.</li>
+        <li>Set Login Kit <strong>Redirect URI</strong> to <code>http://127.0.0.1:8765/callback</code>, add your TikTok account under <strong>Target Users</strong>, and click <strong>Apply changes</strong>.</li>
+        <li>Copy your Sandbox <strong>Client Key</strong> and <strong>Client Secret</strong> into <strong>MuseCat Auto Share → Accounts &amp; API → TikTok</strong> and click <strong>Sign in with TikTok</strong>.</li>
+      </ol>
+      <div class="warn">
+        <strong>Note:</strong> Unaudited/Sandbox TikTok apps post to <code>inbox (Drafts)</code> so clips arrive directly in your TikTok app Inbox ready for 1-tap publishing. After passing TikTok's free Production App Review, you can switch to <code>direct</code> mode.
+      </div>
+    </div>
+
+    <footer>
+      MuseCat Auto Share — Stream-Safe Clip Automation
+    </footer>
+  </div>
+</body>
+</html>
