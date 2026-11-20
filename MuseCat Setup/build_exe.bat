@@ -34,6 +34,7 @@ echo [2/2] Building standalone dist\MuseCatAutoShare.exe ...
     --add-data "Kurulum_Rehberi.html;." ^
     --add-data "Setup_Guide_EN.html;." ^
     --collect-all customtkinter ^
+    --collect-all imageio_ffmpeg ^
     main.py
 
 if errorlevel 1 (

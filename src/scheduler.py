@@ -207,7 +207,11 @@ class ClipScheduler:
                     self.license_manager.is_pro
                     and not self.worker.is_busy
                 ):
-                    if bool(getattr(self.config_manager.config, "scheduler_enabled", False)):
+                    # Tek kaynak kuralı: Drive stok anahtarı AÇIKSA yalnızca Drive'dan çek;
+                    # KAPALIYSA yalnızca yerel kuyruktaki zamanlı klipleri çalıştır.
+                    if bool(getattr(self.config_manager.config, "drive_stock_sync_enabled", False)):
+                        self._check_drive_stock_due()
+                    elif bool(getattr(self.config_manager.config, "scheduler_enabled", False)):
                         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         due_clips = self.db.get_due_scheduled_clips(now_str)
                         for clip in due_clips:
@@ -228,7 +232,6 @@ class ClipScheduler:
                                     )
                                 except Exception:
                                     pass
-                    self._check_drive_stock_due()
             except Exception as exc:
                 logger.exception("ClipScheduler döngü hatası: %s", exc)
 
