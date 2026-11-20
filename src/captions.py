@@ -107,20 +107,20 @@ def build_ass_file(
     if style_norm == "classic":
         # Crisp white with soft dark box
         style_line = (
-            "Style: Default,Arial,62,&H00FFFFFF,&H0000FFFF,&H00000000,&H88000000,"
-            "-1,0,0,0,100,100,0,0,1,4,2,2,60,60,340,1"
+            "Style: Default,Arial,58,&H00FFFFFF,&H0000FFFF,&H00000000,&H88000000,"
+            "-1,0,0,0,100,100,0,0,1,4,2,2,60,60,185,1"
         )
     elif style_norm == "neon":
         # Cyan glow gaming style
         style_line = (
-            "Style: Default,Arial Black,68,&H00FFEE22,&H00FF66FF,&H003A124A,&H80000000,"
-            "-1,0,0,0,100,100,0,0,1,6,3,2,60,60,360,1"
+            "Style: Default,Arial Black,62,&H00FFEE22,&H00FF66FF,&H003A124A,&H80000000,"
+            "-1,0,0,0,100,100,0,0,1,6,3,2,60,60,195,1"
         )
     else:
-        # Streamer (Hormozi-inspired bold yellow/white punchy outline)
+        # Streamer (Hormozi-inspired bold yellow/white punchy outline, lower-third subtitle zone)
         style_line = (
-            "Style: Default,Arial Black,70,&H0000E5FF,&H00FFFFFF,&H00000000,&H90000000,"
-            "-1,0,0,0,100,100,0,0,1,7,3,2,60,60,360,1"
+            "Style: Default,Arial Black,64,&H0000E5FF,&H00FFFFFF,&H00000000,&H90000000,"
+            "-1,0,0,0,100,100,0,0,1,7,3,2,60,60,195,1"
         )
 
     header = (
@@ -145,7 +145,7 @@ def build_ass_file(
         if not txt:
             continue
         if style_norm == "streamer":
-            txt = txt.upper()
+            txt = txt.replace("i", "İ").replace("ı", "I").upper()
         lines.append(
             f"Dialogue: 0,{_format_ass_time(seg.start)},{_format_ass_time(seg.end)},Default,,0,0,0,,{txt}\n"
         )
