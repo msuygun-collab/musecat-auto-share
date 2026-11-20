@@ -164,6 +164,18 @@ class UploadWorker:
                     self._active_job = False
                 if self._queue.empty() and not self._stop_event.is_set():
                     self._emit("queue_idle", {})
+                elif not self._queue.empty() and not self._stop_event.is_set():
+                    # Anti-Spam Koruması: Toplu yüklemelerde arka arkaya saniyesinde gönderip
+                    # Instagram/TikTok/YouTube spam filtresine takılmamak için güvenli bekleme uygula.
+                    cfg = self.config_manager.config
+                    cooldown = int(getattr(cfg, "anti_spam_delay_seconds", 180) or 0)
+                    if not cfg.dry_run and cooldown > 0:
+                        logger.info(
+                            "Anti-Spam Koruması: Sonraki klip öncesi %d saniye bekleniyor...",
+                            cooldown,
+                        )
+                        self._emit("anti_spam_wait", {"seconds": cooldown})
+                        self._stop_event.wait(timeout=cooldown)
 
     def _execute_job(self, job: _UploadJob) -> None:
         clip = self.db.get_clip(job.clip_id)

@@ -86,6 +86,10 @@ class AppConfig:
     gumroad_checkout_url: str = "https://gumroad.com/"
     scheduler_enabled: bool = False
     scheduler_interval_minutes: int = 180
+    anti_spam_delay_seconds: int = 180
+    drive_stock_folder_name: str = "MuseCat_Stok_Kuyruk"
+    drive_stock_sync_enabled: bool = False
+    drive_stock_last_run: str = ""
 
 
 _CONFIG_FIELD_NAMES: frozenset[str] = frozenset(f.name for f in fields(AppConfig))

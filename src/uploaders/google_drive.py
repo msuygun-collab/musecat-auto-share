@@ -142,6 +142,76 @@ class GoogleDriveUploader(BaseUploader):
             logger.warning("Mevcut Drive dosyası herkese açık yapılamadı (%s): %s", file_id, exc)
             return ""
 
+    def list_stock_videos(self, folder_name: str = "MuseCat_Stok_Kuyruk") -> tuple[str, list[dict[str, Any]]]:
+        """Find/create the stock queue folder on Drive and return (folder_id, oldest-first video list)."""
+        service = self._build_service()
+        folder_id = self._find_or_create_folder(service, folder_name.strip() or "MuseCat_Stok_Kuyruk")
+        # Ensure Published subfolder exists too
+        self._find_or_create_folder(service, "Yayinlandi", parent_id=folder_id)
+
+        query = (
+            f"'{folder_id}' in parents "
+            "and trashed = false "
+            f"and mimeType != '{DRIVE_FOLDER_MIME}'"
+        )
+        res = (
+            service.files()
+            .list(
+                q=query,
+                spaces="drive",
+                fields="files(id, name, mimeType, size, webViewLink, createdTime)",
+                orderBy="createdTime asc",
+                pageSize=50,
+            )
+            .execute()
+        )
+        videos = [
+            f
+            for f in res.get("files", [])
+            if str(f.get("name", "")).lower().endswith((".mp4", ".mov", ".mkv"))
+        ]
+        return folder_id, videos
+
+    def download_stock_video(self, file_id: str, dest_path: Path) -> bool:
+        """Download a stock video from Google Drive to a local path."""
+        try:
+            from googleapiclient.http import MediaIoBaseDownload
+        except ImportError as exc:
+            raise RuntimeError("google-api-python-client yüklü değil.") from exc
+
+        service = self._build_service()
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        request = service.files().get_media(fileId=file_id)
+        with dest_path.open("wb") as fh:
+            downloader = MediaIoBaseDownload(fh, request, chunksize=5 * 1024 * 1024)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+        return dest_path.is_file() and dest_path.stat().st_size > 0
+
+    def move_file_to_published(
+        self,
+        file_id: str,
+        source_folder_id: str,
+        published_folder_name: str = "Yayinlandi",
+    ) -> bool:
+        """Move a published stock video into the 'Yayinlandi' subfolder so it is never re-posted."""
+        try:
+            service = self._build_service()
+            pub_id = self._find_or_create_folder(
+                service, published_folder_name, parent_id=source_folder_id
+            )
+            service.files().update(
+                fileId=file_id,
+                addParents=pub_id,
+                removeParents=source_folder_id,
+                fields="id, parents",
+            ).execute()
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Drive stok videosu Yayinlandi klasörüne taşınamadı (%s): %s", file_id, exc)
+            return False
+
     @staticmethod
     def _escape_drive_query(value: str) -> str:
         return value.replace("\\", "\\\\").replace("'", "\\'")

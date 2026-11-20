@@ -327,6 +327,10 @@ class AutoClipApp(ctk.CTk):
         if not message and "message" in kwargs:
             message = str(kwargs["message"])
 
+        if event_type == "anti_spam_wait" and len(args) >= 2 and isinstance(args[1], dict):
+            sec = int(args[1].get("seconds", 180) or 180)
+            message = self._t("status_anti_spam_wait", seconds=sec)
+
         display_msg = message or event_type or self._t("status_updated")
         self.set_footer_status(display_msg)
         self._update_header_indicators()
@@ -2221,14 +2225,14 @@ class AutoClipApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _scheduler_interval_options(self) -> list[tuple[int, str]]:
-        """Return (minutes, localized_label) pairs for Smart Scheduler dropdown."""
+        """Return (minutes, localized_label) pairs for Smart Scheduler dropdown (3h-24h)."""
         return [
-            (30, self._t("interval_30")),
-            (60, self._t("interval_60")),
-            (120, self._t("interval_120")),
             (180, self._t("interval_180")),
             (360, self._t("interval_360")),
+            (540, self._t("interval_540")),
             (720, self._t("interval_720")),
+            (1080, self._t("interval_1080")),
+            (1440, self._t("interval_1440")),
         ]
 
     def _build_pro_tab(self) -> None:
@@ -2414,7 +2418,7 @@ class AutoClipApp(ctk.CTk):
 
         interval_options = self._scheduler_interval_options()
         interval_labels = [lbl for _, lbl in interval_options]
-        self.scheduler_interval_var = ctk.StringVar(value=interval_labels[3])  # default 3 saat / 3 hours (180 min)
+        self.scheduler_interval_var = ctk.StringVar(value=interval_labels[0])  # default 3 saat / 3 hours (180 min)
         self.scheduler_interval_menu = ctk.CTkOptionMenu(
             sched_ctrl,
             values=interval_labels,
@@ -2475,6 +2479,93 @@ class AutoClipApp(ctk.CTk):
             border_color=CARD_BORDER,
         )
         self.scheduled_list_frame.pack(fill="x", padx=16, pady=(0, 14))
+
+        # --- Card 2.5: Google Drive Stok Klasörü (Pro) ---
+        stock_card = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        stock_card.pack(fill="x", padx=4, pady=(0, 12))
+
+        ctk.CTkLabel(
+            stock_card,
+            text=self._t("pro_stock_title"),
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=TEXT_PRIMARY,
+            anchor="w",
+        ).pack(fill="x", padx=16, pady=(14, 4))
+
+        ctk.CTkLabel(
+            stock_card,
+            text=self._t("pro_stock_desc"),
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+            wraplength=920,
+            justify="left",
+        ).pack(fill="x", padx=16, pady=(0, 10))
+
+        stock_row = ctk.CTkFrame(stock_card, fg_color="transparent")
+        stock_row.pack(fill="x", padx=16, pady=(0, 8))
+
+        ctk.CTkLabel(
+            stock_row,
+            text=self._t("pro_stock_folder_lbl"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+        ).pack(side="left", padx=(0, 8))
+
+        self.entry_drive_stock_folder = ctk.CTkEntry(
+            stock_row,
+            placeholder_text="MuseCat_Stok_Kuyruk",
+            fg_color=INPUT_BG,
+            border_color=CARD_BORDER,
+            height=34,
+            width=260,
+        )
+        self.entry_drive_stock_folder.pack(side="left", padx=(0, 12))
+
+        self.pro_stock_sync_var = ctk.BooleanVar(value=False)
+        ctk.CTkSwitch(
+            stock_row,
+            text=self._t("pro_stock_switch"),
+            variable=self.pro_stock_sync_var,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            progress_color=ACCENT_GREEN,
+        ).pack(side="left")
+
+        stock_btns = ctk.CTkFrame(stock_card, fg_color="transparent")
+        stock_btns.pack(fill="x", padx=16, pady=(2, 8))
+
+        ctk.CTkButton(
+            stock_btns,
+            text=self._t("pro_stock_save_btn"),
+            command=self._on_save_drive_stock_settings,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            stock_btns,
+            text=self._t("pro_stock_pull_btn"),
+            command=self._on_pull_drive_stock_now,
+            fg_color=ACCENT_PRIMARY,
+            hover_color=ACCENT_PRIMARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+        ).pack(side="left")
+
+        self.lbl_stock_status = ctk.CTkLabel(
+            stock_card,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+        )
+        self.lbl_stock_status.pack(fill="x", padx=16, pady=(0, 12))
 
         # --- Card 3: Yakında (Pro): AI Otomatik Altyazı (Whisper) ---
         whisper_card = ctk.CTkFrame(
@@ -2661,8 +2752,50 @@ class AutoClipApp(ctk.CTk):
         # Sync stored interval selection
         saved_interval = int(getattr(cfg, "scheduler_interval_minutes", 180) or 180)
         options = self._scheduler_interval_options()
-        matched_label = next((lbl for mins, lbl in options if mins == saved_interval), options[3][1])
+        matched_label = next((lbl for mins, lbl in options if mins == saved_interval), options[0][1])
         self.scheduler_interval_var.set(matched_label)
+
+        if hasattr(self, "entry_drive_stock_folder"):
+            self.entry_drive_stock_folder.delete(0, "end")
+            self.entry_drive_stock_folder.insert(
+                0, str(getattr(cfg, "drive_stock_folder_name", "MuseCat_Stok_Kuyruk") or "MuseCat_Stok_Kuyruk")
+            )
+            self.pro_stock_sync_var.set(bool(getattr(cfg, "drive_stock_sync_enabled", False)))
+
+    def _on_save_drive_stock_settings(self) -> None:
+        if not self.license_manager.is_pro:
+            messagebox.showinfo(self._t("pro_lock_title"), self._t("pro_lock_body"))
+            return
+        folder_name = self.entry_drive_stock_folder.get().strip() or "MuseCat_Stok_Kuyruk"
+        interval_min = self._selected_interval_minutes()
+        self.config_manager.update(
+            drive_stock_folder_name=folder_name,
+            drive_stock_sync_enabled=bool(self.pro_stock_sync_var.get()),
+            scheduler_interval_minutes=interval_min,
+        )
+        self.config_manager.save()
+        self.lbl_stock_status.configure(text=self._t("pro_stock_saved"), text_color="#4ADE80")
+
+    def _on_pull_drive_stock_now(self) -> None:
+        if not self.license_manager.is_pro:
+            messagebox.showinfo(self._t("pro_lock_title"), self._t("pro_lock_body"))
+            return
+        if self.scheduler is None:
+            return
+        self._on_save_drive_stock_settings()
+        self.lbl_stock_status.configure(text=self._t("pro_stock_pulling"), text_color="#93C5FD")
+
+        def _work() -> None:
+            ok, msg = self.scheduler.pull_next_stock_video_from_drive(lang=self._lang())
+            color = "#4ADE80" if ok else "#FCA5A5"
+
+            def _done() -> None:
+                self.lbl_stock_status.configure(text=msg, text_color=color)
+                self.refresh_all_views()
+
+            self.after(0, _done)
+
+        threading.Thread(target=_work, daemon=True).start()
 
     def _refresh_scheduled_list(self) -> None:
         if not hasattr(self, "scheduled_list_frame"):
