@@ -47,3 +47,4 @@ Output will be generated at `dist\MuseCatAutoShare.exe`. Your personal `data/` f
 ## 🛡️ Privacy & Security
 
 All API credentials, OAuth tokens, and SQLite queue records stay **100% local** on your PC under `data/`. Nothing is sent to any third-party server.
+- **VirusTotal Scan (`v1.1.0`):** [View Report](https://www.virustotal.com/gui/file/4f0ba79f42483873e350205459a9c7227d9f3c0cc82027fbcec4ce39ce082227) *(Clean on Microsoft Defender, BitDefender, Avast, AVG, Avira, Kaspersky, etc. — 2 generic ML false-positives are standard for unsigned PyInstaller builds; full source code is public above.)*
