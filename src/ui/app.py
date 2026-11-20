@@ -13,7 +13,7 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
-from src.captions import CaptionEngine
+from src.captions import CAPTION_OUTPUT_DIR, CaptionEngine
 from src.config import CREDENTIALS_DIR, RESOURCE_ROOT, ConfigManager
 from src.database import ClipDatabase, ClipRecord
 from src.i18n import LANGUAGE_LABELS, normalize_lang, tr
@@ -690,24 +690,24 @@ class AutoClipApp(ctk.CTk):
         right_panel.grid(row=0, column=1, sticky="nsew")
 
         editor_scroll = ctk.CTkScrollableFrame(right_panel, fg_color="transparent")
-        editor_scroll.pack(fill="both", expand=True, padx=12, pady=10)
+        editor_scroll.pack(fill="both", expand=True, padx=10, pady=6)
 
         ctk.CTkLabel(
             editor_scroll,
             text=self._t("editor_title"),
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color=TEXT_PRIMARY,
-        ).pack(anchor="w", pady=(0, 6))
+        ).pack(anchor="w", pady=(0, 2))
 
         self.editor_file_lbl = ctk.CTkLabel(
             editor_scroll,
             text=self._t("editor_select_hint"),
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=11),
             text_color=TEXT_MUTED,
-            wraplength=400,
+            wraplength=420,
             justify="left",
         )
-        self.editor_file_lbl.pack(anchor="w", pady=(0, 10))
+        self.editor_file_lbl.pack(anchor="w", pady=(0, 6))
 
         # Title
         ctk.CTkLabel(
@@ -715,15 +715,15 @@ class AutoClipApp(ctk.CTk):
             text=self._t("lbl_title"),
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=TEXT_PRIMARY,
-        ).pack(anchor="w", pady=(2, 4))
+        ).pack(anchor="w", pady=(0, 2))
         self.entry_clip_title = ctk.CTkEntry(
             editor_scroll,
             placeholder_text=self._t("ph_clip_title"),
             fg_color=INPUT_BG,
             border_color=CARD_BORDER,
-            height=34,
+            height=32,
         )
-        self.entry_clip_title.pack(fill="x", pady=(0, 10))
+        self.entry_clip_title.pack(fill="x", pady=(0, 6))
 
         # Description
         ctk.CTkLabel(
@@ -731,15 +731,15 @@ class AutoClipApp(ctk.CTk):
             text=self._t("lbl_description"),
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=TEXT_PRIMARY,
-        ).pack(anchor="w", pady=(2, 4))
+        ).pack(anchor="w", pady=(0, 2))
         self.txt_clip_desc = ctk.CTkTextbox(
             editor_scroll,
-            height=86,
+            height=54,
             fg_color=INPUT_BG,
             border_color=CARD_BORDER,
             border_width=1,
         )
-        self.txt_clip_desc.pack(fill="x", pady=(0, 10))
+        self.txt_clip_desc.pack(fill="x", pady=(0, 6))
 
         # Hashtags
         ctk.CTkLabel(
@@ -747,15 +747,15 @@ class AutoClipApp(ctk.CTk):
             text=self._t("lbl_hashtags"),
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=TEXT_PRIMARY,
-        ).pack(anchor="w", pady=(2, 4))
+        ).pack(anchor="w", pady=(0, 2))
         self.entry_clip_hashtags = ctk.CTkEntry(
             editor_scroll,
             placeholder_text="#shorts #reels #tiktok #gaming",
             fg_color=INPUT_BG,
             border_color=CARD_BORDER,
-            height=34,
+            height=32,
         )
-        self.entry_clip_hashtags.pack(fill="x", pady=(0, 12))
+        self.entry_clip_hashtags.pack(fill="x", pady=(0, 6))
 
         # Platform Checkboxes
         ctk.CTkLabel(
@@ -763,10 +763,10 @@ class AutoClipApp(ctk.CTk):
             text=self._t("lbl_target_platforms"),
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=TEXT_PRIMARY,
-        ).pack(anchor="w", pady=(2, 6))
+        ).pack(anchor="w", pady=(0, 3))
 
         plat_grid = ctk.CTkFrame(editor_scroll, fg_color=INPUT_BG, corner_radius=8)
-        plat_grid.pack(fill="x", pady=(0, 12))
+        plat_grid.pack(fill="x", pady=(0, 6))
         plat_grid.grid_columnconfigure((0, 1), weight=1)
 
         self.clip_plat_vars: dict[str, ctk.BooleanVar] = {
@@ -790,69 +790,86 @@ class AutoClipApp(ctk.CTk):
                 checkbox_width=18,
                 checkbox_height=18,
             )
-            cb.grid(row=r, column=c, sticky="w", padx=12, pady=8)
+            cb.grid(row=r, column=c, sticky="w", padx=10, pady=4)
 
         # Error / Links display
         self.editor_error_lbl = ctk.CTkLabel(
             editor_scroll,
             text="",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=11),
             text_color="#FCA5A5",
-            wraplength=400,
+            wraplength=420,
             justify="left",
         )
-        self.editor_error_lbl.pack(anchor="w", pady=(0, 8))
+        self.editor_error_lbl.pack(anchor="w", pady=(0, 2))
 
-        self.editor_links_frame = ctk.CTkFrame(editor_scroll, fg_color="transparent")
-        self.editor_links_frame.pack(fill="x", pady=(0, 10))
+        self.editor_links_frame = ctk.CTkFrame(editor_scroll, fg_color="transparent", height=0)
+        self.editor_links_frame.pack(fill="x", pady=(0, 4))
 
-        # Editor Buttons
-        btn_row = ctk.CTkFrame(editor_scroll, fg_color="transparent")
-        btn_row.pack(fill="x", pady=(4, 4))
+        # Editor Buttons — 2 compact left-aligned fixed-gap rows (no awkward stretching)
+        btn_row_1 = ctk.CTkFrame(editor_scroll, fg_color="transparent")
+        btn_row_1.pack(fill="x", pady=(2, 4))
 
         self.btn_save_clip = ctk.CTkButton(
-            btn_row,
+            btn_row_1,
             text=self._t("btn_save"),
             command=self._on_save_clip_metadata,
             fg_color=ACCENT_SECONDARY,
             hover_color=ACCENT_SECONDARY_HOVER,
-            height=36,
-            width=95,
+            height=34,
+            width=96,
         )
         self.btn_save_clip.pack(side="left", padx=(0, 8))
 
         self.btn_share_clip = ctk.CTkButton(
-            btn_row,
+            btn_row_1,
             text=self._t("btn_share_selected"),
             command=self._on_share_selected_clip,
             fg_color=ACCENT_PRIMARY,
             hover_color=ACCENT_PRIMARY_HOVER,
             font=ctk.CTkFont(size=12, weight="bold"),
-            height=36,
+            height=34,
+            width=165,
         )
-        self.btn_share_clip.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.btn_share_clip.pack(side="left", padx=(0, 8))
 
         self.btn_delete_clip = ctk.CTkButton(
-            btn_row,
+            btn_row_1,
             text=self._t("btn_delete"),
             command=self._on_delete_selected_clip,
             fg_color=ACCENT_RED,
             hover_color=ACCENT_RED_HOVER,
-            height=36,
-            width=72,
+            height=34,
+            width=76,
         )
-        self.btn_delete_clip.pack(side="right")
+        self.btn_delete_clip.pack(side="left")
+
+        btn_row_2 = ctk.CTkFrame(editor_scroll, fg_color="transparent")
+        btn_row_2.pack(fill="x", pady=(2, 4))
 
         self.btn_caption_clip = ctk.CTkButton(
-            editor_scroll,
+            btn_row_2,
             text=self._t("btn_caption_clip"),
             command=self._on_caption_selected_clip,
             fg_color="#7C3AED",
             hover_color="#6D28D9",
             font=ctk.CTkFont(size=12, weight="bold"),
-            height=36,
+            height=34,
+            width=192,
         )
-        self.btn_caption_clip.pack(fill="x", pady=(4, 4))
+        self.btn_caption_clip.pack(side="left", padx=(0, 8))
+
+        self.btn_preview_caption = ctk.CTkButton(
+            btn_row_2,
+            text=self._t("btn_preview_captioned"),
+            command=self._on_preview_captioned_clip,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_SECONDARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+            width=155,
+        )
+        self.btn_preview_caption.pack(side="left")
 
         self._set_editor_enabled(False)
 
@@ -865,6 +882,7 @@ class AutoClipApp(ctk.CTk):
         self.btn_share_clip.configure(state=state)
         self.btn_delete_clip.configure(state=state)
         self.btn_caption_clip.configure(state=state)
+        self.btn_preview_caption.configure(state=state)
 
     def _refresh_queue_list(self) -> None:
         try:
@@ -1163,6 +1181,27 @@ class AutoClipApp(ctk.CTk):
             self.after(0, _done)
 
         threading.Thread(target=_work, daemon=True).start()
+
+    def _on_preview_captioned_clip(self) -> None:
+        if self._selected_clip_id is None:
+            return
+        clip = next((c for c in self._clips_cache if c.id == self._selected_clip_id), None)
+        if clip is None:
+            return
+        captioned_path = CAPTION_OUTPUT_DIR / f"{Path(clip.file_path).stem}_subtitled.mp4"
+        if not captioned_path.is_file():
+            messagebox.showinfo(
+                self._t("btn_preview_captioned"),
+                self._t("err_no_captioned_file"),
+            )
+            return
+        try:
+            if os.name == "nt":
+                os.startfile(str(captioned_path))  # type: ignore[attr-defined]
+            else:
+                webbrowser.open(captioned_path.as_uri())
+        except Exception as exc:
+            messagebox.showerror(self._t("err_title"), str(exc))
 
     def _on_share_all_pending(self) -> None:
         self.set_footer_status(self._t("status_sharing_all"))
@@ -1972,7 +2011,7 @@ class AutoClipApp(ctk.CTk):
         self._refresh_account_badges()
 
     def _on_open_setup_guide(self) -> None:
-        if self._lang() == "en":
+        if self._lang() != "tr":
             candidates = [
                 APP_ROOT / "Setup_Guide_EN.html",
                 APP_ROOT / "Kurulum_Rehberi.html",
@@ -2038,10 +2077,12 @@ class AutoClipApp(ctk.CTk):
             anchor="w",
         ).pack(anchor="w", pady=(2, 0))
 
-        self.settings_lang_var = ctk.StringVar(value=LANGUAGE_LABELS[self._lang()])
+        self.settings_lang_var = ctk.StringVar(
+            value=LANGUAGE_LABELS.get(self._lang(), LANGUAGE_LABELS["en"])
+        )
         self.settings_lang_menu = ctk.CTkOptionMenu(
             lang_row,
-            values=[LANGUAGE_LABELS["tr"], LANGUAGE_LABELS["en"]],
+            values=list(LANGUAGE_LABELS.values()),
             variable=self.settings_lang_var,
             command=self._on_language_option_changed,
             fg_color=CARD_BG,
@@ -2049,7 +2090,7 @@ class AutoClipApp(ctk.CTk):
             button_hover_color=ACCENT_PRIMARY_HOVER,
             font=ctk.CTkFont(size=13, weight="bold"),
             height=36,
-            width=150,
+            width=175,
         )
         self.settings_lang_menu.pack(side="right", padx=14, pady=10)
 
@@ -2210,7 +2251,8 @@ class AutoClipApp(ctk.CTk):
         self.lbl_settings_saved.pack(side="left", padx=14)
 
     def _on_language_option_changed(self, selected_label: str) -> None:
-        new_lang = "en" if selected_label == LANGUAGE_LABELS["en"] else "tr"
+        label_to_code = {v: k for k, v in LANGUAGE_LABELS.items()}
+        new_lang = label_to_code.get(selected_label, "en")
         if new_lang == self._lang():
             return
         self.config_manager.update(language=new_lang)
@@ -2233,7 +2275,8 @@ class AutoClipApp(ctk.CTk):
         dry_run = bool(self.settings_dry_run_var.get())
         minimize_to_tray = bool(self.settings_tray_close_var.get())
         auto_prune = bool(self.settings_auto_prune_var.get())
-        selected_lang = "en" if self.settings_lang_var.get() == LANGUAGE_LABELS["en"] else "tr"
+        label_to_code = {v: k for k, v in LANGUAGE_LABELS.items()}
+        selected_lang = label_to_code.get(self.settings_lang_var.get(), self._lang())
         enabled_platforms = {k: bool(v.get()) for k, v in self.settings_plat_vars.items()}
 
         self.config_manager.update(
@@ -3191,7 +3234,7 @@ class AutoClipApp(ctk.CTk):
         )
 
         # Settings Tab
-        self.settings_lang_var.set(LANGUAGE_LABELS[self._lang()])
+        self.settings_lang_var.set(LANGUAGE_LABELS.get(self._lang(), LANGUAGE_LABELS["en"]))
         self.entry_watch_folder.delete(0, "end")
         self.entry_watch_folder.insert(0, cfg.watch_folder or "")
         self.entry_default_hashtags.delete(0, "end")

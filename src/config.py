@@ -83,8 +83,8 @@ class AppConfig:
     license_status: str = "free"  # "free" or "pro"
     license_email: str = ""
     license_last_verified: str = ""
-    gumroad_product_id: str = ""
-    gumroad_checkout_url: str = "https://gumroad.com/"
+    gumroad_product_id: str = "aITe8QziVIs_bdYXGB43Aw=="
+    gumroad_checkout_url: str = "https://suygun.gumroad.com/l/musecat-pro"
     scheduler_enabled: bool = False
     scheduler_interval_minutes: int = 180
     anti_spam_delay_seconds: int = 180
