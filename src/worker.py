@@ -100,7 +100,13 @@ class UploadWorker:
         )
 
         if not cfg.stream_safe_mode:
-            self.process_clip_now(clip.id)
+            if bool(getattr(cfg, "require_approval_before_social", True)):
+                # Başlıksız/onaysız sosyal medyaya atma: yalnızca Google Drive'a otomatik yedekle,
+                # YouTube/Instagram/TikTok için kullanıcının başlık yazıp onaylamasını bekle.
+                if bool((cfg.enabled_platforms or {}).get("gdrive", True)):
+                    self.process_clip_now(clip.id, platforms=["gdrive"])
+            else:
+                self.process_clip_now(clip.id)
 
         return clip
 
@@ -190,6 +196,29 @@ class UploadWorker:
         uploaders = create_uploaders(self.config_manager.config)
         drive_public_url: str = ""
 
+        # MuseCat Pro: Otomatik altyazılı sürüm varsa (veya otomatik altyazı açıksa) sosyal medyaya onu yükle
+        social_video_path = clip.file_path
+        cfg = self.config_manager.config
+        has_social_target = any(p in target_platforms for p in ("youtube", "instagram", "tiktok"))
+        if has_social_target and not cfg.dry_run:
+            from pathlib import Path as _Path
+            from src.captions import CAPTION_OUTPUT_DIR, CaptionEngine
+
+            existing_captioned = CAPTION_OUTPUT_DIR / f"{_Path(clip.file_path).stem}_subtitled.mp4"
+            if existing_captioned.is_file():
+                social_video_path = str(existing_captioned)
+            elif (
+                bool(getattr(cfg, "auto_caption_enabled", False))
+                and (getattr(cfg, "license_status", "free") or "").lower() == "pro"
+            ):
+                self._emit("caption_started", {"clip_id": clip.id, "file_name": clip.file_name})
+                ok_cap, cap_path, cap_msg = CaptionEngine(cfg).generate_captioned_video(clip.file_path)
+                if ok_cap and cap_path:
+                    social_video_path = cap_path
+                    logger.info("Otomatik altyazı eklendi: %s", cap_msg)
+                else:
+                    logger.warning("Otomatik altyazı atlandı (%s), orijinal video yüklenecek.", cap_msg)
+
         # Klip daha önce Google Drive'a başarıyla yedeklendiyse tekrar yükleme (çift kopyayı önle).
         # Instagram Reels için mevcut Drive dosyasının linkini yeniden kullan.
         gdrive_uploader = uploaders.get("gdrive")
@@ -260,7 +289,12 @@ class UploadWorker:
                 extra_kwargs["public_video_url"] = drive_public_url
 
             try:
-                result = self._invoke_uploader(uploader, clip, extra_kwargs)
+                effective_clip = clip
+                if platform in ("youtube", "instagram", "tiktok") and social_video_path != clip.file_path:
+                    from dataclasses import replace
+
+                    effective_clip = replace(clip, file_path=social_video_path)
+                result = self._invoke_uploader(uploader, effective_clip, extra_kwargs)
                 success = bool(getattr(result, "success", False))
                 url = str(getattr(result, "url", "") or getattr(result, "share_url", "") or "")
                 error = str(getattr(result, "error", "") or getattr(result, "message", "") or "")

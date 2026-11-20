@@ -53,6 +53,7 @@ class AppConfig:
     watch_folder: str = ""
     language: str = "tr"
     stream_safe_mode: bool = True
+    require_approval_before_social: bool = True
     minimize_to_tray_on_close: bool = True
     auto_remove_deleted_files: bool = False
     dry_run: bool = True
@@ -90,6 +91,13 @@ class AppConfig:
     drive_stock_folder_name: str = "MuseCat_Stok_Kuyruk"
     drive_stock_sync_enabled: bool = False
     drive_stock_last_run: str = ""
+    # MuseCat Pro AI Auto-Captions (Local faster-whisper + Groq Whisper API)
+    auto_caption_enabled: bool = False
+    caption_engine: str = "local"  # "local" or "groq"
+    caption_style: str = "streamer"  # "streamer", "classic", "neon"
+    caption_language: str = "auto"  # "auto", "tr", "en"
+    whisper_model_size: str = "small"
+    groq_api_key: str = ""
 
 
 _CONFIG_FIELD_NAMES: frozenset[str] = frozenset(f.name for f in fields(AppConfig))

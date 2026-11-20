@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
+from src.captions import CaptionEngine
 from src.config import CREDENTIALS_DIR, RESOURCE_ROOT, ConfigManager
 from src.database import ClipDatabase, ClipRecord
 from src.i18n import LANGUAGE_LABELS, normalize_lang, tr
@@ -842,6 +843,17 @@ class AutoClipApp(ctk.CTk):
         )
         self.btn_delete_clip.pack(side="right")
 
+        self.btn_caption_clip = ctk.CTkButton(
+            editor_scroll,
+            text=self._t("btn_caption_clip"),
+            command=self._on_caption_selected_clip,
+            fg_color="#7C3AED",
+            hover_color="#6D28D9",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=36,
+        )
+        self.btn_caption_clip.pack(fill="x", pady=(4, 4))
+
         self._set_editor_enabled(False)
 
     def _set_editor_enabled(self, enabled: bool) -> None:
@@ -852,6 +864,7 @@ class AutoClipApp(ctk.CTk):
         self.btn_save_clip.configure(state=state)
         self.btn_share_clip.configure(state=state)
         self.btn_delete_clip.configure(state=state)
+        self.btn_caption_clip.configure(state=state)
 
     def _refresh_queue_list(self) -> None:
         try:
@@ -1112,6 +1125,44 @@ class AutoClipApp(ctk.CTk):
             self.refresh_all_views()
         except Exception as exc:
             messagebox.showerror(self._t("err_title"), self._t("err_delete_clip", exc=exc))
+
+    def _on_caption_selected_clip(self) -> None:
+        if self._selected_clip_id is None:
+            return
+        if not self.license_manager.is_pro:
+            messagebox.showinfo(self._t("pro_lock_title"), self._t("pro_lock_body"))
+            return
+        clip = next((c for c in self._clips_cache if c.id == self._selected_clip_id), None)
+        if clip is None:
+            return
+
+        self.btn_caption_clip.configure(state="disabled")
+        self.set_footer_status(self._t("status_captioning_clip", name=clip.file_name))
+
+        def _work() -> None:
+            try:
+                ok, _out_path, msg = CaptionEngine(self.config_manager.config).generate_captioned_video(
+                    clip.file_path
+                )
+            except Exception as exc:
+                ok = False
+                msg = str(exc)
+
+            def _done() -> None:
+                try:
+                    if self.btn_caption_clip.winfo_exists() and self._selected_clip_id is not None:
+                        self.btn_caption_clip.configure(state="normal")
+                except Exception:
+                    pass
+                self.set_footer_status(msg)
+                if ok:
+                    messagebox.showinfo(self._t("caption_done_title"), msg)
+                else:
+                    messagebox.showerror(self._t("caption_err_title"), msg)
+
+            self.after(0, _done)
+
+        threading.Thread(target=_work, daemon=True).start()
 
     def _on_share_all_pending(self) -> None:
         self.set_footer_status(self._t("status_sharing_all"))
@@ -2069,6 +2120,15 @@ class AutoClipApp(ctk.CTk):
             progress_color=ACCENT_GREEN,
         ).pack(anchor="w", padx=14, pady=(12, 8))
 
+        self.settings_require_approval_var = ctk.BooleanVar(value=True)
+        ctk.CTkSwitch(
+            modes_box,
+            text=self._t("settings_require_approval_switch"),
+            variable=self.settings_require_approval_var,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            progress_color=ACCENT_GREEN,
+        ).pack(anchor="w", padx=14, pady=(4, 8))
+
         self.settings_dry_run_var = ctk.BooleanVar(value=True)
         ctk.CTkSwitch(
             modes_box,
@@ -2169,6 +2229,7 @@ class AutoClipApp(ctk.CTk):
         new_folder = self.entry_watch_folder.get().strip()
         new_hashtags = self.entry_default_hashtags.get().strip()
         stream_safe = bool(self.settings_stream_var.get())
+        require_approval = bool(self.settings_require_approval_var.get())
         dry_run = bool(self.settings_dry_run_var.get())
         minimize_to_tray = bool(self.settings_tray_close_var.get())
         auto_prune = bool(self.settings_auto_prune_var.get())
@@ -2180,6 +2241,7 @@ class AutoClipApp(ctk.CTk):
             language=selected_lang,
             default_hashtags=new_hashtags,
             stream_safe_mode=stream_safe,
+            require_approval_before_social=require_approval,
             minimize_to_tray_on_close=minimize_to_tray,
             auto_remove_deleted_files=auto_prune,
             dry_run=dry_run,
@@ -2233,6 +2295,26 @@ class AutoClipApp(ctk.CTk):
             (720, self._t("interval_720")),
             (1080, self._t("interval_1080")),
             (1440, self._t("interval_1440")),
+        ]
+
+    def _caption_engine_options(self) -> list[tuple[str, str]]:
+        return [
+            ("local", self._t("pro_caption_engine_local")),
+            ("groq", self._t("pro_caption_engine_groq")),
+        ]
+
+    def _caption_style_options(self) -> list[tuple[str, str]]:
+        return [
+            ("streamer", self._t("pro_caption_style_streamer")),
+            ("classic", self._t("pro_caption_style_classic")),
+            ("neon", self._t("pro_caption_style_neon")),
+        ]
+
+    def _caption_lang_options(self) -> list[tuple[str, str]]:
+        return [
+            ("auto", self._t("pro_caption_lang_auto")),
+            ("tr", self._t("pro_caption_lang_tr")),
+            ("en", self._t("pro_caption_lang_en")),
         ]
 
     def _build_pro_tab(self) -> None:
@@ -2567,46 +2649,160 @@ class AutoClipApp(ctk.CTk):
         )
         self.lbl_stock_status.pack(fill="x", padx=16, pady=(0, 12))
 
-        # --- Card 3: Yakında (Pro): AI Otomatik Altyazı (Whisper) ---
-        whisper_card = ctk.CTkFrame(
+        # --- Card 3: AI Otomatik Altyazı (Pro) ---
+        caption_card = ctk.CTkFrame(
             scroll,
             fg_color=CARD_BG,
             corner_radius=10,
             border_width=1,
             border_color=CARD_BORDER,
         )
-        whisper_card.pack(fill="x", padx=4, pady=(0, 12))
+        caption_card.pack(fill="x", padx=4, pady=(0, 12))
 
-        w_hdr = ctk.CTkFrame(whisper_card, fg_color="transparent")
-        w_hdr.pack(fill="x", padx=16, pady=(14, 6))
+        cap_hdr = ctk.CTkFrame(caption_card, fg_color="transparent")
+        cap_hdr.pack(fill="x", padx=16, pady=(14, 6))
 
         ctk.CTkLabel(
-            w_hdr,
-            text=self._t("pro_whisper_card_title"),
+            cap_hdr,
+            text=self._t("pro_caption_card_title"),
             font=ctk.CTkFont(size=15, weight="bold"),
             text_color=TEXT_PRIMARY,
         ).pack(side="left")
 
         ctk.CTkLabel(
-            w_hdr,
-            text=self._t("pro_whisper_badge"),
+            cap_hdr,
+            text=self._t("pro_caption_badge"),
             font=ctk.CTkFont(size=11, weight="bold"),
             corner_radius=6,
             padx=10,
             pady=3,
-            fg_color="#1E3A8A",
-            text_color="#93C5FD",
+            fg_color="#3B1E54",
+            text_color="#D8B4FE",
         ).pack(side="right")
 
         ctk.CTkLabel(
-            whisper_card,
-            text=self._t("pro_whisper_desc"),
+            caption_card,
+            text=self._t("pro_caption_desc"),
             font=ctk.CTkFont(size=12),
             text_color=TEXT_MUTED,
             anchor="w",
             wraplength=920,
             justify="left",
-        ).pack(fill="x", padx=16, pady=(0, 14))
+        ).pack(fill="x", padx=16, pady=(0, 10))
+
+        cap_grid = ctk.CTkFrame(caption_card, fg_color="transparent")
+        cap_grid.pack(fill="x", padx=16, pady=(0, 8))
+        cap_grid.grid_columnconfigure(1, weight=1)
+
+        engine_opts = self._caption_engine_options()
+        engine_labels = [lbl for _, lbl in engine_opts]
+        ctk.CTkLabel(
+            cap_grid,
+            text=self._t("pro_caption_engine_lbl"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=0, column=0, sticky="w", padx=(0, 10), pady=5)
+        self.caption_engine_var = ctk.StringVar(value=engine_labels[0])
+        self.caption_engine_menu = ctk.CTkOptionMenu(
+            cap_grid,
+            values=engine_labels,
+            variable=self.caption_engine_var,
+            fg_color=INPUT_BG,
+            button_color=ACCENT_SECONDARY,
+            button_hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+            width=260,
+        )
+        self.caption_engine_menu.grid(row=0, column=1, sticky="w", pady=5)
+
+        ctk.CTkLabel(
+            cap_grid,
+            text=self._t("pro_caption_groq_key_lbl"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=1, column=0, sticky="w", padx=(0, 10), pady=5)
+        self.entry_groq_api_key = ctk.CTkEntry(
+            cap_grid,
+            show="*",
+            placeholder_text=self._t("ph_groq_api_key"),
+            fg_color=INPUT_BG,
+            border_color=CARD_BORDER,
+            height=34,
+        )
+        self.entry_groq_api_key.grid(row=1, column=1, sticky="ew", pady=5)
+
+        style_opts = self._caption_style_options()
+        style_labels = [lbl for _, lbl in style_opts]
+        ctk.CTkLabel(
+            cap_grid,
+            text=self._t("pro_caption_style_lbl"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=2, column=0, sticky="w", padx=(0, 10), pady=5)
+        self.caption_style_var = ctk.StringVar(value=style_labels[0])
+        self.caption_style_menu = ctk.CTkOptionMenu(
+            cap_grid,
+            values=style_labels,
+            variable=self.caption_style_var,
+            fg_color=INPUT_BG,
+            button_color=ACCENT_SECONDARY,
+            button_hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+            width=220,
+        )
+        self.caption_style_menu.grid(row=2, column=1, sticky="w", pady=5)
+
+        lang_opts = self._caption_lang_options()
+        lang_labels = [lbl for _, lbl in lang_opts]
+        ctk.CTkLabel(
+            cap_grid,
+            text=self._t("pro_caption_lang_lbl"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=3, column=0, sticky="w", padx=(0, 10), pady=5)
+        self.caption_lang_var = ctk.StringVar(value=lang_labels[0])
+        self.caption_lang_menu = ctk.CTkOptionMenu(
+            cap_grid,
+            values=lang_labels,
+            variable=self.caption_lang_var,
+            fg_color=INPUT_BG,
+            button_color=ACCENT_SECONDARY,
+            button_hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+            width=180,
+        )
+        self.caption_lang_menu.grid(row=3, column=1, sticky="w", pady=5)
+
+        self.pro_auto_caption_var = ctk.BooleanVar(value=False)
+        ctk.CTkSwitch(
+            caption_card,
+            text=self._t("pro_caption_auto_switch"),
+            variable=self.pro_auto_caption_var,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            progress_color=ACCENT_GREEN,
+        ).pack(anchor="w", padx=16, pady=(4, 10))
+
+        cap_btns = ctk.CTkFrame(caption_card, fg_color="transparent")
+        cap_btns.pack(fill="x", padx=16, pady=(0, 6))
+
+        ctk.CTkButton(
+            cap_btns,
+            text=self._t("pro_caption_save_btn"),
+            command=self._on_save_caption_settings,
+            fg_color=ACCENT_PRIMARY,
+            hover_color=ACCENT_PRIMARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+        ).pack(side="left")
+
+        self.lbl_caption_status = ctk.CTkLabel(
+            caption_card,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+        )
+        self.lbl_caption_status.pack(fill="x", padx=16, pady=(0, 14))
 
     def _selected_interval_minutes(self) -> int:
         chosen_label = self.scheduler_interval_var.get()
@@ -2761,6 +2957,65 @@ class AutoClipApp(ctk.CTk):
                 0, str(getattr(cfg, "drive_stock_folder_name", "MuseCat_Stok_Kuyruk") or "MuseCat_Stok_Kuyruk")
             )
             self.pro_stock_sync_var.set(bool(getattr(cfg, "drive_stock_sync_enabled", False)))
+
+        if hasattr(self, "caption_engine_var"):
+            saved_engine = str(getattr(cfg, "caption_engine", "local") or "local").strip().lower()
+            eng_opts = self._caption_engine_options()
+            self.caption_engine_var.set(
+                next((lbl for code, lbl in eng_opts if code == saved_engine), eng_opts[0][1])
+            )
+
+            saved_style = str(getattr(cfg, "caption_style", "streamer") or "streamer").strip().lower()
+            sty_opts = self._caption_style_options()
+            self.caption_style_var.set(
+                next((lbl for code, lbl in sty_opts if code == saved_style), sty_opts[0][1])
+            )
+
+            saved_lang = str(getattr(cfg, "caption_language", "auto") or "auto").strip().lower()
+            lng_opts = self._caption_lang_options()
+            self.caption_lang_var.set(
+                next((lbl for code, lbl in lng_opts if code == saved_lang), lng_opts[0][1])
+            )
+
+            self.pro_auto_caption_var.set(bool(getattr(cfg, "auto_caption_enabled", False)))
+
+            if hasattr(self, "entry_groq_api_key"):
+                try:
+                    focused = self.focus_get()
+                except Exception:
+                    focused = None
+                if focused != getattr(self.entry_groq_api_key, "_entry", None):
+                    self.entry_groq_api_key.delete(0, "end")
+                    self.entry_groq_api_key.insert(0, str(getattr(cfg, "groq_api_key", "") or ""))
+
+    def _on_save_caption_settings(self) -> None:
+        if not self.license_manager.is_pro:
+            messagebox.showinfo(self._t("pro_lock_title"), self._t("pro_lock_body"))
+            return
+
+        eng_label = self.caption_engine_var.get()
+        engine = next((code for code, lbl in self._caption_engine_options() if lbl == eng_label), "local")
+
+        style_label = self.caption_style_var.get()
+        style = next((code for code, lbl in self._caption_style_options() if lbl == style_label), "streamer")
+
+        lang_label = self.caption_lang_var.get()
+        lang = next((code for code, lbl in self._caption_lang_options() if lbl == lang_label), "auto")
+
+        groq_key = self.entry_groq_api_key.get().strip()
+        auto_enabled = bool(self.pro_auto_caption_var.get())
+
+        self.config_manager.update(
+            auto_caption_enabled=auto_enabled,
+            caption_engine=engine,
+            caption_style=style,
+            caption_language=lang,
+            groq_api_key=groq_key,
+        )
+        self.config_manager.save()
+        msg = self._t("pro_caption_saved")
+        self.lbl_caption_status.configure(text=msg, text_color="#4ADE80")
+        self.set_footer_status(msg)
 
     def _on_save_drive_stock_settings(self) -> None:
         if not self.license_manager.is_pro:
@@ -2942,6 +3197,7 @@ class AutoClipApp(ctk.CTk):
         self.entry_default_hashtags.delete(0, "end")
         self.entry_default_hashtags.insert(0, cfg.default_hashtags or "")
         self.settings_stream_var.set(bool(cfg.stream_safe_mode))
+        self.settings_require_approval_var.set(bool(getattr(cfg, "require_approval_before_social", True)))
         self.settings_dry_run_var.set(bool(cfg.dry_run))
         self.settings_tray_close_var.set(bool(getattr(cfg, "minimize_to_tray_on_close", True)))
         self.settings_auto_prune_var.set(bool(getattr(cfg, "auto_remove_deleted_files", False)))
