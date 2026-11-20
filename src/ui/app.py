@@ -16,6 +16,8 @@ import customtkinter as ctk
 from src.config import CREDENTIALS_DIR, RESOURCE_ROOT, ConfigManager
 from src.database import ClipDatabase, ClipRecord
 from src.i18n import LANGUAGE_LABELS, normalize_lang, tr
+from src.license_manager import LicenseManager
+from src.scheduler import ClipScheduler
 from src.uploaders import create_uploaders
 from src.watcher import ClipWatcher
 from src.worker import UploadWorker
@@ -93,6 +95,8 @@ class AutoClipApp(ctk.CTk):
         watcher: ClipWatcher,
         tray_manager: Optional[TrayManager] = None,
         on_quit: Optional[Callable[[], None]] = None,
+        license_manager: Optional[LicenseManager] = None,
+        scheduler: Optional[ClipScheduler] = None,
     ) -> None:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -105,6 +109,10 @@ class AutoClipApp(ctk.CTk):
         self.watcher = watcher
         self.tray_manager = tray_manager
         self._on_quit = on_quit
+        self.license_manager: LicenseManager = (
+            license_manager if license_manager is not None else LicenseManager(config_manager)
+        )
+        self.scheduler: Optional[ClipScheduler] = scheduler
 
         self._selected_clip_id: Optional[int] = None
         self._editor_loaded_clip_id: Optional[int] = None
@@ -542,17 +550,26 @@ class AutoClipApp(ctk.CTk):
         tab_drive_name = self._t("tab_drive")
         tab_accounts_name = self._t("tab_accounts")
         tab_settings_name = self._t("tab_settings")
-        self._tab_names = [tab_queue_name, tab_drive_name, tab_accounts_name, tab_settings_name]
+        tab_pro_name = self._t("tab_pro")
+        self._tab_names = [
+            tab_queue_name,
+            tab_drive_name,
+            tab_accounts_name,
+            tab_settings_name,
+            tab_pro_name,
+        ]
 
         self.tab_queue = self.tabview.add(tab_queue_name)
         self.tab_drive = self.tabview.add(tab_drive_name)
         self.tab_accounts = self.tabview.add(tab_accounts_name)
         self.tab_settings = self.tabview.add(tab_settings_name)
+        self.tab_pro = self.tabview.add(tab_pro_name)
 
         self._build_queue_tab()
         self._build_drive_tab()
         self._build_accounts_tab()
         self._build_settings_tab()
+        self._build_pro_tab()
 
     # ------------------------------------------------------------------
     # Tab 1: Klip Kuyruğu
@@ -2200,6 +2217,512 @@ class AutoClipApp(ctk.CTk):
         self.after(3500, _clear_saved_lbl)
 
     # ------------------------------------------------------------------
+    # Tab 5: MuseCat Pro (Gumroad License + Smart Scheduler)
+    # ------------------------------------------------------------------
+
+    def _scheduler_interval_options(self) -> list[tuple[int, str]]:
+        """Return (minutes, localized_label) pairs for Smart Scheduler dropdown."""
+        return [
+            (30, self._t("interval_30")),
+            (60, self._t("interval_60")),
+            (120, self._t("interval_120")),
+            (180, self._t("interval_180")),
+            (360, self._t("interval_360")),
+            (720, self._t("interval_720")),
+        ]
+
+    def _build_pro_tab(self) -> None:
+        scroll = ctk.CTkScrollableFrame(self.tab_pro, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=4, pady=4)
+
+        # --- Card 1: Plan & Lisans Aktivasyonu (Gumroad) ---
+        lic_card = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        lic_card.pack(fill="x", padx=4, pady=(0, 12))
+
+        lic_hdr = ctk.CTkFrame(lic_card, fg_color="transparent")
+        lic_hdr.pack(fill="x", padx=16, pady=(14, 6))
+
+        ctk.CTkLabel(
+            lic_hdr,
+            text=self._t("pro_license_card_title"),
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
+
+        self.badge_pro_plan = ctk.CTkLabel(
+            lic_hdr,
+            text=self._t("pro_badge_free"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            corner_radius=8,
+            padx=12,
+            pady=4,
+            fg_color="#1F2937",
+            text_color=TEXT_MUTED,
+        )
+        self.badge_pro_plan.pack(side="right")
+
+        ctk.CTkLabel(
+            lic_card,
+            text=self._t("pro_license_card_desc"),
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+            justify="left",
+        ).pack(fill="x", padx=16, pady=(0, 6))
+
+        self.lbl_license_email = ctk.CTkLabel(
+            lic_card,
+            text="",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#93C5FD",
+            anchor="w",
+        )
+        self.lbl_license_email.pack(fill="x", padx=16, pady=(0, 6))
+
+        key_row = ctk.CTkFrame(lic_card, fg_color="transparent")
+        key_row.pack(fill="x", padx=16, pady=(4, 8))
+
+        ctk.CTkLabel(
+            key_row,
+            text=self._t("lbl_license_key"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left", padx=(0, 10))
+
+        self.entry_license_key = ctk.CTkEntry(
+            key_row,
+            placeholder_text=self._t("ph_license_key"),
+            fg_color=INPUT_BG,
+            border_color=CARD_BORDER,
+            height=36,
+        )
+        self.entry_license_key.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        self.btn_activate_license = ctk.CTkButton(
+            key_row,
+            text=self._t("btn_activate_license"),
+            command=self._on_activate_license,
+            fg_color=ACCENT_GREEN,
+            hover_color=ACCENT_GREEN_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=36,
+            width=125,
+        )
+        self.btn_activate_license.pack(side="right")
+
+        lic_btns = ctk.CTkFrame(lic_card, fg_color="transparent")
+        lic_btns.pack(fill="x", padx=16, pady=(2, 6))
+
+        self.btn_buy_pro = ctk.CTkButton(
+            lic_btns,
+            text=self._t("btn_buy_pro"),
+            command=self._on_buy_pro,
+            fg_color=ACCENT_PRIMARY,
+            hover_color=ACCENT_PRIMARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+        )
+        self.btn_buy_pro.pack(side="left", padx=(0, 8))
+
+        self.btn_deactivate_license = ctk.CTkButton(
+            lic_btns,
+            text=self._t("btn_deactivate_license"),
+            command=self._on_deactivate_license,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_RED_HOVER,
+            font=ctk.CTkFont(size=12),
+            height=34,
+        )
+        self.btn_deactivate_license.pack(side="left")
+
+        self.lbl_license_status = ctk.CTkLabel(
+            lic_card,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+            wraplength=920,
+            justify="left",
+        )
+        self.lbl_license_status.pack(fill="x", padx=16, pady=(2, 14))
+
+        # --- Card 2: Akıllı Zamanlı Paylaşım (Smart Scheduler — Pro) ---
+        sched_card = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        sched_card.pack(fill="x", padx=4, pady=(0, 12))
+
+        sched_hdr = ctk.CTkFrame(sched_card, fg_color="transparent")
+        sched_hdr.pack(fill="x", padx=16, pady=(14, 6))
+
+        ctk.CTkLabel(
+            sched_hdr,
+            text=self._t("pro_scheduler_card_title"),
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            sched_hdr,
+            text=self._t("pro_scheduler_badge_pro"),
+            font=ctk.CTkFont(size=11, weight="bold"),
+            corner_radius=6,
+            padx=10,
+            pady=3,
+            fg_color="#3B1E54",
+            text_color="#D8B4FE",
+        ).pack(side="right")
+
+        ctk.CTkLabel(
+            sched_card,
+            text=self._t("pro_scheduler_desc"),
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+            wraplength=920,
+            justify="left",
+        ).pack(fill="x", padx=16, pady=(0, 8))
+
+        self.lbl_scheduler_lock = ctk.CTkLabel(
+            sched_card,
+            text="",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#FBBF24",
+            anchor="w",
+        )
+        self.lbl_scheduler_lock.pack(fill="x", padx=16, pady=(0, 6))
+
+        sched_ctrl = ctk.CTkFrame(sched_card, fg_color=INPUT_BG, corner_radius=8)
+        sched_ctrl.pack(fill="x", padx=16, pady=(2, 8))
+
+        ctk.CTkLabel(
+            sched_ctrl,
+            text=self._t("pro_scheduler_interval_label"),
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left", padx=(12, 8), pady=10)
+
+        interval_options = self._scheduler_interval_options()
+        interval_labels = [lbl for _, lbl in interval_options]
+        self.scheduler_interval_var = ctk.StringVar(value=interval_labels[3])  # default 3 saat / 3 hours (180 min)
+        self.scheduler_interval_menu = ctk.CTkOptionMenu(
+            sched_ctrl,
+            values=interval_labels,
+            variable=self.scheduler_interval_var,
+            fg_color=CARD_BG,
+            button_color=ACCENT_SECONDARY,
+            button_hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+            width=120,
+        )
+        self.scheduler_interval_menu.pack(side="left", padx=(0, 12), pady=10)
+
+        self.btn_schedule_pending = ctk.CTkButton(
+            sched_ctrl,
+            text=self._t("btn_schedule_pending"),
+            command=self._on_schedule_pending_clips,
+            fg_color=ACCENT_PRIMARY,
+            hover_color=ACCENT_PRIMARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+        )
+        self.btn_schedule_pending.pack(side="left", padx=(0, 8), pady=10)
+
+        self.btn_clear_schedule = ctk.CTkButton(
+            sched_ctrl,
+            text=self._t("btn_clear_schedule"),
+            command=self._on_clear_schedule,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_RED_HOVER,
+            font=ctk.CTkFont(size=12),
+            height=34,
+        )
+        self.btn_clear_schedule.pack(side="left", padx=(0, 12), pady=10)
+
+        self.lbl_scheduler_status = ctk.CTkLabel(
+            sched_card,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+        )
+        self.lbl_scheduler_status.pack(fill="x", padx=16, pady=(0, 8))
+
+        self.lbl_scheduled_header = ctk.CTkLabel(
+            sched_card,
+            text=self._t("pro_upcoming_title", count=0),
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=TEXT_PRIMARY,
+            anchor="w",
+        )
+        self.lbl_scheduled_header.pack(fill="x", padx=16, pady=(2, 6))
+
+        self.scheduled_list_frame = ctk.CTkFrame(
+            sched_card,
+            fg_color=INPUT_BG,
+            corner_radius=8,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        self.scheduled_list_frame.pack(fill="x", padx=16, pady=(0, 14))
+
+        # --- Card 3: Yakında (Pro): AI Otomatik Altyazı (Whisper) ---
+        whisper_card = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        whisper_card.pack(fill="x", padx=4, pady=(0, 12))
+
+        w_hdr = ctk.CTkFrame(whisper_card, fg_color="transparent")
+        w_hdr.pack(fill="x", padx=16, pady=(14, 6))
+
+        ctk.CTkLabel(
+            w_hdr,
+            text=self._t("pro_whisper_card_title"),
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            w_hdr,
+            text=self._t("pro_whisper_badge"),
+            font=ctk.CTkFont(size=11, weight="bold"),
+            corner_radius=6,
+            padx=10,
+            pady=3,
+            fg_color="#1E3A8A",
+            text_color="#93C5FD",
+        ).pack(side="right")
+
+        ctk.CTkLabel(
+            whisper_card,
+            text=self._t("pro_whisper_desc"),
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+            wraplength=920,
+            justify="left",
+        ).pack(fill="x", padx=16, pady=(0, 14))
+
+    def _selected_interval_minutes(self) -> int:
+        chosen_label = self.scheduler_interval_var.get()
+        for mins, lbl in self._scheduler_interval_options():
+            if lbl == chosen_label:
+                return mins
+        return 180
+
+    def _on_activate_license(self) -> None:
+        key = self.entry_license_key.get().strip()
+        lang = self._lang()
+        self.btn_activate_license.configure(state="disabled")
+        self.lbl_license_status.configure(
+            text=self._t("status_activating_license"),
+            text_color="#93C5FD",
+        )
+
+        def _worker() -> None:
+            try:
+                ok, msg = self.license_manager.activate(key, lang=lang)
+            except Exception as exc:
+                ok = False
+                msg = str(exc)
+
+            def _apply() -> None:
+                try:
+                    if self.btn_activate_license.winfo_exists():
+                        self.btn_activate_license.configure(state="normal")
+                    if self.lbl_license_status.winfo_exists():
+                        self.lbl_license_status.configure(
+                            text=msg,
+                            text_color="#4ADE80" if ok else "#FCA5A5",
+                        )
+                except Exception:
+                    pass
+                self._refresh_pro_tab_status()
+                self._refresh_scheduled_list()
+                self.set_footer_status(msg)
+
+            self.after(0, _apply)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_deactivate_license(self) -> None:
+        if not self.license_manager.is_pro:
+            return
+        if not messagebox.askyesno(
+            self._t("confirm_deactivate_title"),
+            self._t("confirm_deactivate_msg"),
+        ):
+            return
+        self.license_manager.deactivate()
+        self.entry_license_key.delete(0, "end")
+        msg = self._t("status_license_deactivated")
+        self.lbl_license_status.configure(text=msg, text_color=TEXT_MUTED)
+        self.set_footer_status(msg)
+        self._refresh_pro_tab_status()
+        self._refresh_scheduled_list()
+
+    def _on_buy_pro(self) -> None:
+        url = (getattr(self.config_manager.config, "gumroad_checkout_url", "") or "").strip()
+        if not url:
+            url = "https://gumroad.com/"
+        webbrowser.open(url)
+
+    def _on_schedule_pending_clips(self) -> None:
+        if not self.license_manager.is_pro:
+            messagebox.showinfo(
+                self._t("pro_lock_title"),
+                self._t("pro_lock_msg"),
+            )
+            self.lbl_scheduler_status.configure(
+                text=self._t("pro_lock_inline"),
+                text_color="#FBBF24",
+            )
+            return
+
+        if self.scheduler is None:
+            self.lbl_scheduler_status.configure(
+                text=self._t("pro_scheduler_unavailable"),
+                text_color="#FCA5A5",
+            )
+            return
+
+        interval_mins = self._selected_interval_minutes()
+        interval_label = self.scheduler_interval_var.get()
+        count = self.scheduler.schedule_all_pending(interval_mins)
+        if count > 0:
+            msg = self._t("status_scheduled_count", count=count, interval=interval_label)
+            self.lbl_scheduler_status.configure(text=msg, text_color="#4ADE80")
+        else:
+            msg = self._t("status_schedule_no_pending")
+            self.lbl_scheduler_status.configure(text=msg, text_color="#FBBF24")
+        self.set_footer_status(msg)
+        self.refresh_all_views()
+
+    def _on_clear_schedule(self) -> None:
+        if self.scheduler is not None:
+            self.scheduler.clear_all_schedules()
+        else:
+            self.db.clear_all_schedules()
+            self.config_manager.update(scheduler_enabled=False)
+            self.config_manager.save()
+        msg = self._t("status_schedule_cleared")
+        self.lbl_scheduler_status.configure(text=msg, text_color=TEXT_MUTED)
+        self.set_footer_status(msg)
+        self.refresh_all_views()
+
+    def _refresh_pro_tab_status(self) -> None:
+        if not hasattr(self, "badge_pro_plan"):
+            return
+        try:
+            if not self.badge_pro_plan.winfo_exists():
+                return
+        except Exception:
+            return
+
+        cfg = self.config_manager.config
+        is_pro = self.license_manager.is_pro
+
+        if is_pro:
+            self.badge_pro_plan.configure(
+                text=self._t("pro_badge_active"),
+                fg_color="#14532D",
+                text_color="#4ADE80",
+            )
+            email = (cfg.license_email or "").strip()
+            self.lbl_license_email.configure(
+                text=self._t("pro_license_email", email=email) if email else ""
+            )
+            self.btn_deactivate_license.configure(state="normal")
+            self.lbl_scheduler_lock.configure(text="")
+        else:
+            self.badge_pro_plan.configure(
+                text=self._t("pro_badge_free"),
+                fg_color="#1F2937",
+                text_color=TEXT_MUTED,
+            )
+            self.lbl_license_email.configure(text="")
+            self.btn_deactivate_license.configure(state="disabled")
+            self.lbl_scheduler_lock.configure(text=self._t("pro_lock_inline"))
+
+        # Sync stored interval selection
+        saved_interval = int(getattr(cfg, "scheduler_interval_minutes", 180) or 180)
+        options = self._scheduler_interval_options()
+        matched_label = next((lbl for mins, lbl in options if mins == saved_interval), options[3][1])
+        self.scheduler_interval_var.set(matched_label)
+
+    def _refresh_scheduled_list(self) -> None:
+        if not hasattr(self, "scheduled_list_frame"):
+            return
+        try:
+            if not self.scheduled_list_frame.winfo_exists():
+                return
+        except Exception:
+            return
+
+        try:
+            scheduled = self.db.get_scheduled_clips()
+        except Exception as exc:
+            logger.debug("Zamanlanmış klipler alınamadı: %s", exc)
+            scheduled = []
+
+        self.lbl_scheduled_header.configure(
+            text=self._t("pro_upcoming_title", count=len(scheduled))
+        )
+
+        for w in self.scheduled_list_frame.winfo_children():
+            w.destroy()
+
+        if not scheduled:
+            ctk.CTkLabel(
+                self.scheduled_list_frame,
+                text=self._t("pro_upcoming_empty"),
+                font=ctk.CTkFont(size=12),
+                text_color=TEXT_MUTED,
+            ).pack(padx=12, pady=12, anchor="w")
+            return
+
+        for clip in scheduled:
+            row = ctk.CTkFrame(self.scheduled_list_frame, fg_color="transparent")
+            row.pack(fill="x", padx=12, pady=5)
+
+            title_text = clip.title.strip() if clip.title else clip.file_name
+            if len(title_text) > 58:
+                title_text = title_text[:55] + "..."
+
+            ctk.CTkLabel(
+                row,
+                text=f"• {title_text}",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                text_color=TEXT_PRIMARY,
+                anchor="w",
+            ).pack(side="left", fill="x", expand=True)
+
+            ctk.CTkLabel(
+                row,
+                text=f"🕒 {clip.scheduled_at}",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                fg_color="#1E3A8A",
+                text_color="#93C5FD",
+                corner_radius=6,
+                padx=8,
+                pady=2,
+            ).pack(side="right", padx=(8, 0))
+
+    # ------------------------------------------------------------------
     # Footer Status Bar
     # ------------------------------------------------------------------
 
@@ -2294,13 +2817,22 @@ class AutoClipApp(ctk.CTk):
         for key, var in self.settings_plat_vars.items():
             var.set(bool(enabled.get(key, True)))
 
+        # MuseCat Pro Tab
+        if hasattr(self, "entry_license_key"):
+            self.entry_license_key.delete(0, "end")
+            self.entry_license_key.insert(0, getattr(cfg, "license_key", "") or "")
+        self._refresh_pro_tab_status()
+        self._refresh_scheduled_list()
+
         self._refresh_account_badges()
 
     def refresh_all_views(self) -> None:
-        """Refresh clip queue, Drive backup log, and header badges."""
+        """Refresh clip queue, Drive backup log, Pro schedule list, and header badges."""
         self._update_header_indicators()
         self._refresh_queue_list()
         self._refresh_drive_log()
+        self._refresh_pro_tab_status()
+        self._refresh_scheduled_list()
 
     def _open_url_safe(self, url: str) -> None:
         if url.startswith(("http://", "https://")):

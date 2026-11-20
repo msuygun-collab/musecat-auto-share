@@ -77,6 +77,15 @@ class AppConfig:
     tiktok_post_mode: str = "inbox"  # "inbox" or "direct"
     video_extensions: list[str] = field(default_factory=_default_video_extensions)
     file_stability_seconds: float = 2.0
+    # MuseCat Pro (Gumroad License + Smart Scheduler)
+    license_key: str = ""
+    license_status: str = "free"  # "free" or "pro"
+    license_email: str = ""
+    license_last_verified: str = ""
+    gumroad_product_id: str = ""
+    gumroad_checkout_url: str = "https://gumroad.com/"
+    scheduler_enabled: bool = False
+    scheduler_interval_minutes: int = 180
 
 
 _CONFIG_FIELD_NAMES: frozenset[str] = frozenset(f.name for f in fields(AppConfig))

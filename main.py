@@ -11,6 +11,8 @@ from typing import Any, Optional
 
 from src.config import DATA_DIR, ConfigManager
 from src.database import ClipDatabase
+from src.license_manager import LicenseManager
+from src.scheduler import ClipScheduler
 from src.ui.app import AutoClipApp
 from src.ui.tray import TrayManager
 from src.watcher import ClipWatcher
@@ -78,6 +80,14 @@ def main(argv: Optional[list[str]] = None) -> int:
             app.on_worker_event(*event_args, **event_kwargs)
 
     worker = UploadWorker(config_manager, db, on_event=forward_worker_event)
+    license_manager = LicenseManager(config_manager)
+    scheduler = ClipScheduler(
+        config_manager,
+        db,
+        worker,
+        license_manager,
+        on_event=forward_worker_event,
+    )
 
     cfg = config_manager.config
     extensions = getattr(cfg, "video_extensions", [".mp4", ".mov", ".mkv"])
@@ -101,6 +111,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             shutdown_done["value"] = True
 
         logger.info("AutoClipShareAuto kapatılıyor...")
+        try:
+            scheduler.stop()
+        except Exception as exc:
+            logger.debug("Scheduler stop error: %s", exc)
+
         try:
             watcher.stop()
         except Exception as exc:
@@ -130,6 +145,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # Start background services
     worker.start()
+    scheduler.start()
     if cfg.watch_folder and Path(cfg.watch_folder).is_dir():
         try:
             watcher.start()
@@ -143,6 +159,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         worker=worker,
         watcher=watcher,
         on_quit=shutdown,
+        license_manager=license_manager,
+        scheduler=scheduler,
     )
     app_ref["app"] = app
 

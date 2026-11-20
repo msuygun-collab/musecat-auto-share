@@ -40,9 +40,11 @@ class ClipRecord:
     url_tiktok: str
     url_gdrive: str
     last_error: str
+    scheduled_at: str = ""
 
 
 def _row_to_clip(row: sqlite3.Row) -> ClipRecord:
+    keys = row.keys()
     return ClipRecord(
         id=int(row["id"]),
         file_path=str(row["file_path"]),
@@ -61,6 +63,7 @@ def _row_to_clip(row: sqlite3.Row) -> ClipRecord:
         url_tiktok=str(row["url_tiktok"]),
         url_gdrive=str(row["url_gdrive"]),
         last_error=str(row["last_error"]),
+        scheduled_at=str(row["scheduled_at"]) if "scheduled_at" in keys and row["scheduled_at"] else "",
     )
 
 
@@ -120,10 +123,15 @@ class ClipDatabase:
                     url_instagram TEXT NOT NULL DEFAULT '',
                     url_tiktok TEXT NOT NULL DEFAULT '',
                     url_gdrive TEXT NOT NULL DEFAULT '',
-                    last_error TEXT NOT NULL DEFAULT ''
+                    last_error TEXT NOT NULL DEFAULT '',
+                    scheduled_at TEXT NOT NULL DEFAULT ''
                 );
                 """
             )
+            # Safe migration for existing databases created before scheduled_at existed
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(clips)").fetchall()}
+            if "scheduled_at" not in cols:
+                conn.execute("ALTER TABLE clips ADD COLUMN scheduled_at TEXT NOT NULL DEFAULT ''")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_clips_file_path ON clips (file_path);"
             )
@@ -327,6 +335,47 @@ class ClipDatabase:
             placeholders = ",".join("?" for _ in missing_ids)
             cur = conn.execute(f"DELETE FROM clips WHERE id IN ({placeholders})", missing_ids)
             return int(cur.rowcount or 0)
+
+    def set_scheduled_at(self, clip_id: int, scheduled_at: str) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute(
+                "UPDATE clips SET scheduled_at = ? WHERE id = ?",
+                (scheduled_at or "", clip_id),
+            )
+
+    def clear_all_schedules(self) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute("UPDATE clips SET scheduled_at = '' WHERE scheduled_at != ''")
+
+    def get_scheduled_clips(self) -> list[ClipRecord]:
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM clips
+                WHERE scheduled_at != ''
+                ORDER BY scheduled_at ASC
+                """
+            ).fetchall()
+            return [_row_to_clip(row) for row in rows]
+
+    def get_due_scheduled_clips(self, now_iso: str) -> list[ClipRecord]:
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM clips
+                WHERE scheduled_at != ''
+                  AND scheduled_at <= ?
+                  AND (
+                      status_youtube = 'pending'
+                      OR status_instagram = 'pending'
+                      OR status_tiktok = 'pending'
+                      OR status_gdrive = 'pending'
+                  )
+                ORDER BY scheduled_at ASC
+                """,
+                (now_iso,),
+            ).fetchall()
+            return [_row_to_clip(row) for row in rows]
 
     def get_drive_backups(self, limit: int = 200) -> list[ClipRecord]:
         """Return clips that have been backed up to Google Drive, newest first."""
