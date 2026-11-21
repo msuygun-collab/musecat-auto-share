@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical execution order: Google Drive always runs first so its public
 # download URL can be passed to Instagram Reels if needed.
-PLATFORM_EXECUTION_ORDER: tuple[str, ...] = ("gdrive", "youtube", "instagram", "tiktok")
+PLATFORM_EXECUTION_ORDER: tuple[str, ...] = ("gdrive", "youtube", "instagram", "tiktok", "twitter")
 
 
 @dataclass(frozen=True)
@@ -199,7 +199,7 @@ class UploadWorker:
         # MuseCat Pro: Otomatik altyazılı sürüm varsa (veya otomatik altyazı açıksa) sosyal medyaya onu yükle
         social_video_path = clip.file_path
         cfg = self.config_manager.config
-        has_social_target = any(p in target_platforms for p in ("youtube", "instagram", "tiktok"))
+        has_social_target = any(p in target_platforms for p in ("youtube", "instagram", "tiktok", "twitter"))
         if has_social_target and not cfg.dry_run:
             from pathlib import Path as _Path
             from src.captions import CAPTION_OUTPUT_DIR, CaptionEngine
@@ -290,7 +290,7 @@ class UploadWorker:
 
             try:
                 effective_clip = clip
-                if platform in ("youtube", "instagram", "tiktok") and social_video_path != clip.file_path:
+                if platform in ("youtube", "instagram", "tiktok", "twitter") and social_video_path != clip.file_path:
                     from dataclasses import replace
 
                     effective_clip = replace(clip, file_path=social_video_path)

@@ -38,6 +38,7 @@ def _default_enabled_platforms() -> dict[str, bool]:
         "youtube": True,
         "instagram": True,
         "tiktok": True,
+        "twitter": False,
         "gdrive": True,
     }
 
@@ -76,6 +77,10 @@ class AppConfig:
     tiktok_client_secret: str = ""
     tiktok_access_token: str = ""
     tiktok_post_mode: str = "inbox"  # "inbox" or "direct"
+    twitter_api_key: str = ""
+    twitter_api_secret: str = ""
+    twitter_access_token: str = ""
+    twitter_access_token_secret: str = ""
     video_extensions: list[str] = field(default_factory=_default_video_extensions)
     file_stability_seconds: float = 2.0
     # MuseCat Pro (Gumroad License + Smart Scheduler)

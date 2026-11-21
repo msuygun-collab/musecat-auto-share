@@ -165,8 +165,8 @@ class ClipScheduler:
 
         target_platforms = [
             p
-            for p in ("youtube", "instagram", "tiktok")
-            if bool((cfg.enabled_platforms or {}).get(p, True))
+            for p in ("youtube", "instagram", "tiktok", "twitter")
+            if bool((cfg.enabled_platforms or {}).get(p, p != "twitter"))
         ]
         if target_platforms:
             self.worker.process_clip_now(clip.id, platforms=target_platforms)

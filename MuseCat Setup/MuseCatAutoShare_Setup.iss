@@ -2,7 +2,7 @@
 ; Compiles dist\MuseCatAutoShare.exe into MuseCatAutoShare_Setup.exe
 
 #define MyAppName "MuseCat Auto Share"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "MuseCat"
 #define MyAppExeName "MuseCatAutoShare.exe"
 

@@ -16,7 +16,7 @@ from src.config import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-VALID_PLATFORMS: tuple[str, ...] = ("youtube", "instagram", "tiktok", "gdrive")
+VALID_PLATFORMS: tuple[str, ...] = ("youtube", "instagram", "tiktok", "twitter", "gdrive")
 
 
 @dataclass
@@ -41,6 +41,8 @@ class ClipRecord:
     url_gdrive: str
     last_error: str
     scheduled_at: str = ""
+    status_twitter: str = "skipped"
+    url_twitter: str = ""
 
 
 def _row_to_clip(row: sqlite3.Row) -> ClipRecord:
@@ -64,6 +66,8 @@ def _row_to_clip(row: sqlite3.Row) -> ClipRecord:
         url_gdrive=str(row["url_gdrive"]),
         last_error=str(row["last_error"]),
         scheduled_at=str(row["scheduled_at"]) if "scheduled_at" in keys and row["scheduled_at"] else "",
+        status_twitter=str(row["status_twitter"]) if "status_twitter" in keys and row["status_twitter"] else "skipped",
+        url_twitter=str(row["url_twitter"]) if "url_twitter" in keys and row["url_twitter"] else "",
     )
 
 
@@ -128,10 +132,14 @@ class ClipDatabase:
                 );
                 """
             )
-            # Safe migration for existing databases created before scheduled_at existed
+            # Safe migrations for existing databases
             cols = {r[1] for r in conn.execute("PRAGMA table_info(clips)").fetchall()}
             if "scheduled_at" not in cols:
                 conn.execute("ALTER TABLE clips ADD COLUMN scheduled_at TEXT NOT NULL DEFAULT ''")
+            if "status_twitter" not in cols:
+                conn.execute("ALTER TABLE clips ADD COLUMN status_twitter TEXT NOT NULL DEFAULT 'skipped'")
+            if "url_twitter" not in cols:
+                conn.execute("ALTER TABLE clips ADD COLUMN url_twitter TEXT NOT NULL DEFAULT ''")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_clips_file_path ON clips (file_path);"
             )
@@ -168,10 +176,10 @@ class ClipDatabase:
                 INSERT INTO clips (
                     file_path, file_name, title, description, hashtags,
                     created_at, file_size_mb,
-                    status_youtube, status_instagram, status_tiktok, status_gdrive,
-                    url_youtube, url_instagram, url_tiktok, url_gdrive,
+                    status_youtube, status_instagram, status_tiktok, status_twitter, status_gdrive,
+                    url_youtube, url_instagram, url_tiktok, url_twitter, url_gdrive,
                     last_error
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', '', '', '')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', '', '', '', '')
                 """,
                 (
                     norm_path,
@@ -184,6 +192,7 @@ class ClipDatabase:
                     statuses["youtube"],
                     statuses["instagram"],
                     statuses["tiktok"],
+                    statuses["twitter"],
                     statuses["gdrive"],
                 ),
             )
@@ -225,6 +234,7 @@ class ClipDatabase:
                 WHERE status_youtube = 'pending'
                    OR status_instagram = 'pending'
                    OR status_tiktok = 'pending'
+                   OR status_twitter = 'pending'
                    OR status_gdrive = 'pending'
                 ORDER BY id ASC
                 """
@@ -316,6 +326,7 @@ class ClipDatabase:
                 WHERE status_youtube NOT IN ('pending', 'uploading')
                   AND status_instagram NOT IN ('pending', 'uploading')
                   AND status_tiktok NOT IN ('pending', 'uploading')
+                  AND status_twitter NOT IN ('pending', 'uploading')
                   AND status_gdrive NOT IN ('pending', 'uploading')
                 """
             )

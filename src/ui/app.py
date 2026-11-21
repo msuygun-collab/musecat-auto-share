@@ -767,18 +767,20 @@ class AutoClipApp(ctk.CTk):
 
         plat_grid = ctk.CTkFrame(editor_scroll, fg_color=INPUT_BG, corner_radius=8)
         plat_grid.pack(fill="x", pady=(0, 6))
-        plat_grid.grid_columnconfigure((0, 1), weight=1)
+        plat_grid.grid_columnconfigure((0, 1, 2), weight=1)
 
         self.clip_plat_vars: dict[str, ctk.BooleanVar] = {
             "youtube": ctk.BooleanVar(value=True),
             "instagram": ctk.BooleanVar(value=True),
             "tiktok": ctk.BooleanVar(value=True),
+            "twitter": ctk.BooleanVar(value=False),
             "gdrive": ctk.BooleanVar(value=True),
         }
         plat_labels = [
             ("youtube", "YouTube Shorts", 0, 0),
             ("instagram", "Instagram Reels", 0, 1),
-            ("tiktok", "TikTok", 1, 0),
+            ("tiktok", "TikTok", 0, 2),
+            ("twitter", "X (Twitter)", 1, 0),
             ("gdrive", "Google Drive", 1, 1),
         ]
         for key, label, r, c in plat_labels:
@@ -980,6 +982,7 @@ class AutoClipApp(ctk.CTk):
                 ("YT", clip.status_youtube),
                 ("IG", clip.status_instagram),
                 ("TT", clip.status_tiktok),
+                ("X", getattr(clip, "status_twitter", "skipped")),
                 ("Drive", clip.status_gdrive),
             ]
             lang = self._lang()
@@ -1064,11 +1067,12 @@ class AutoClipApp(ctk.CTk):
                 "youtube": clip.status_youtube,
                 "instagram": clip.status_instagram,
                 "tiktok": clip.status_tiktok,
+                "twitter": getattr(clip, "status_twitter", "skipped"),
                 "gdrive": clip.status_gdrive,
             }
             for key, var in self.clip_plat_vars.items():
                 already_done = (status_map.get(key) or "").lower() == "done"
-                var.set(bool(enabled.get(key, True)) and not already_done)
+                var.set(bool(enabled.get(key, key != "twitter")) and not already_done)
 
         self.editor_error_lbl.configure(
             text=self._t("lbl_last_error", error=clip.last_error) if clip.last_error else ""
@@ -1081,6 +1085,7 @@ class AutoClipApp(ctk.CTk):
             ("YouTube", clip.url_youtube),
             ("Instagram", clip.url_instagram),
             ("TikTok", clip.url_tiktok),
+            ("X", getattr(clip, "url_twitter", "")),
             ("Google Drive", clip.url_gdrive),
         ]
         for name, url in urls:
@@ -1842,6 +1847,106 @@ class AutoClipApp(ctk.CTk):
         )
         self.lbl_tt_test.pack(fill="x", padx=16, pady=(0, 12))
 
+        # --- Card 5: X (Twitter) ---
+        x_card = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        x_card.pack(fill="x", pady=(0, 12), padx=4)
+
+        x_hdr = ctk.CTkFrame(x_card, fg_color="transparent")
+        x_hdr.pack(fill="x", padx=16, pady=(14, 8))
+
+        ctk.CTkLabel(
+            x_hdr,
+            text=self._t("acc_x_title"),
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        ).pack(side="left")
+
+        self.badge_x_cfg = ctk.CTkLabel(
+            x_hdr,
+            text=self._t("badge_checking", label="X"),
+            font=ctk.CTkFont(size=11, weight="bold"),
+            corner_radius=6,
+            padx=8,
+            pady=2,
+            fg_color="#1F2937",
+            text_color=TEXT_MUTED,
+        )
+        self.badge_x_cfg.pack(side="right")
+
+        x_grid = ctk.CTkFrame(x_card, fg_color="transparent")
+        x_grid.pack(fill="x", padx=16, pady=(4, 8))
+        x_grid.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(x_grid, text=self._t("acc_x_api_key"), font=ctk.CTkFont(size=12, weight="bold")).grid(
+            row=0, column=0, sticky="w", padx=(0, 10), pady=4
+        )
+        self.entry_x_api_key = ctk.CTkEntry(
+            x_grid, fg_color=INPUT_BG, border_color=CARD_BORDER, height=32
+        )
+        self.entry_x_api_key.grid(row=0, column=1, sticky="ew", pady=4)
+
+        ctk.CTkLabel(x_grid, text=self._t("acc_x_api_secret"), font=ctk.CTkFont(size=12, weight="bold")).grid(
+            row=1, column=0, sticky="w", padx=(0, 10), pady=4
+        )
+        self.entry_x_api_secret = ctk.CTkEntry(
+            x_grid, show="*", fg_color=INPUT_BG, border_color=CARD_BORDER, height=32
+        )
+        self.entry_x_api_secret.grid(row=1, column=1, sticky="ew", pady=4)
+
+        ctk.CTkLabel(x_grid, text=self._t("acc_x_access_token"), font=ctk.CTkFont(size=12, weight="bold")).grid(
+            row=2, column=0, sticky="w", padx=(0, 10), pady=4
+        )
+        self.entry_x_access_token = ctk.CTkEntry(
+            x_grid, fg_color=INPUT_BG, border_color=CARD_BORDER, height=32
+        )
+        self.entry_x_access_token.grid(row=2, column=1, sticky="ew", pady=4)
+
+        ctk.CTkLabel(x_grid, text=self._t("acc_x_access_secret"), font=ctk.CTkFont(size=12, weight="bold")).grid(
+            row=3, column=0, sticky="w", padx=(0, 10), pady=4
+        )
+        self.entry_x_access_secret = ctk.CTkEntry(
+            x_grid, show="*", fg_color=INPUT_BG, border_color=CARD_BORDER, height=32
+        )
+        self.entry_x_access_secret.grid(row=3, column=1, sticky="ew", pady=4)
+
+        x_btns = ctk.CTkFrame(x_card, fg_color="transparent")
+        x_btns.pack(fill="x", padx=16, pady=(4, 6))
+
+        ctk.CTkButton(
+            x_btns,
+            text=self._t("btn_save"),
+            command=self._on_save_twitter,
+            fg_color=ACCENT_SECONDARY,
+            hover_color=ACCENT_SECONDARY_HOVER,
+            height=34,
+            width=100,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            x_btns,
+            text=self._t("btn_test_x"),
+            command=self._on_test_twitter,
+            fg_color=ACCENT_PRIMARY,
+            hover_color=ACCENT_PRIMARY_HOVER,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            height=34,
+        ).pack(side="left")
+
+        self.lbl_x_test = ctk.CTkLabel(
+            x_card,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+            anchor="w",
+        )
+        self.lbl_x_test.pack(fill="x", padx=16, pady=(0, 12))
+
     def _refresh_account_badges(self) -> None:
         try:
             uploaders = _safe_create_uploaders(self.config_manager)
@@ -1854,6 +1959,7 @@ class AutoClipApp(ctk.CTk):
             ("gdrive", "Drive", self.badge_gdrive_cfg),
             ("instagram", "Instagram", self.badge_ig_cfg),
             ("tiktok", "TikTok", self.badge_tt_cfg),
+            ("twitter", "X", self.badge_x_cfg),
         ]
         for key, label, badge in mapping:
             uploader = uploaders.get(key)
@@ -1988,6 +2094,22 @@ class AutoClipApp(ctk.CTk):
         self._on_save_tiktok()
         self.lbl_tt_test.configure(text=self._t("status_testing_tt"), text_color="#93C5FD")
         self._run_single_platform_test("tiktok", self.lbl_tt_test)
+
+    def _on_save_twitter(self) -> None:
+        self.config_manager.update(
+            twitter_api_key=self.entry_x_api_key.get().strip(),
+            twitter_api_secret=self.entry_x_api_secret.get().strip(),
+            twitter_access_token=self.entry_x_access_token.get().strip(),
+            twitter_access_token_secret=self.entry_x_access_secret.get().strip(),
+        )
+        self.config_manager.save()
+        self._refresh_account_badges()
+        self.lbl_x_test.configure(text=self._t("status_x_saved"), text_color="#4ADE80")
+
+    def _on_test_twitter(self) -> None:
+        self._on_save_twitter()
+        self.lbl_x_test.configure(text=self._t("status_testing_x"), text_color="#93C5FD")
+        self._run_single_platform_test("twitter", self.lbl_x_test)
 
     def _run_single_platform_test(self, platform_key: str, target_label: ctk.CTkLabel) -> None:
         def _worker() -> None:
@@ -2212,12 +2334,14 @@ class AutoClipApp(ctk.CTk):
             "youtube": ctk.BooleanVar(value=True),
             "instagram": ctk.BooleanVar(value=True),
             "tiktok": ctk.BooleanVar(value=True),
+            "twitter": ctk.BooleanVar(value=False),
             "gdrive": ctk.BooleanVar(value=True),
         }
         for key, label in [
             ("youtube", "YouTube Shorts"),
             ("instagram", "Instagram Reels"),
             ("tiktok", "TikTok"),
+            ("twitter", "X (Twitter)"),
             ("gdrive", "Google Drive"),
         ]:
             ctk.CTkCheckBox(
@@ -3187,7 +3311,19 @@ class AutoClipApp(ctk.CTk):
             font=ctk.CTkFont(size=12),
             height=24,
             width=64,
-        ).pack(side="right", padx=12, pady=4)
+        ).pack(side="right", padx=(4, 12), pady=4)
+
+        ctk.CTkButton(
+            footer,
+            text=self._t("btn_report_bug"),
+            command=lambda: webbrowser.open("https://github.com/msuygun-collab/musecat-auto-share/issues/new"),
+            fg_color="transparent",
+            hover_color=ACCENT_SECONDARY,
+            text_color=TEXT_MUTED,
+            font=ctk.CTkFont(size=12),
+            height=24,
+            width=110,
+        ).pack(side="right", padx=(4, 4), pady=4)
 
     def set_footer_status(self, message: str) -> None:
         """Update bottom status bar text."""
@@ -3232,6 +3368,15 @@ class AutoClipApp(ctk.CTk):
         self.tt_mode_var.set(
             self._t("tt_mode_direct") if tt_mode == "direct" else self._t("tt_mode_inbox")
         )
+
+        self.entry_x_api_key.delete(0, "end")
+        self.entry_x_api_key.insert(0, getattr(cfg, "twitter_api_key", "") or "")
+        self.entry_x_api_secret.delete(0, "end")
+        self.entry_x_api_secret.insert(0, getattr(cfg, "twitter_api_secret", "") or "")
+        self.entry_x_access_token.delete(0, "end")
+        self.entry_x_access_token.insert(0, getattr(cfg, "twitter_access_token", "") or "")
+        self.entry_x_access_secret.delete(0, "end")
+        self.entry_x_access_secret.insert(0, getattr(cfg, "twitter_access_token_secret", "") or "")
 
         # Settings Tab
         self.settings_lang_var.set(LANGUAGE_LABELS.get(self._lang(), LANGUAGE_LABELS["en"]))
