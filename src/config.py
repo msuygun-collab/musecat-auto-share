@@ -14,7 +14,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-IS_FROZEN: bool = bool(getattr(sys, "frozen", False))
+IS_NUITKA: bool = "__compiled__" in globals()
+IS_FROZEN: bool = bool(getattr(sys, "frozen", False) or IS_NUITKA)
 APP_ROOT: Path = (
     Path(sys.executable).resolve().parent
     if IS_FROZEN
@@ -22,7 +23,7 @@ APP_ROOT: Path = (
 )
 RESOURCE_ROOT: Path = (
     Path(getattr(sys, "_MEIPASS", APP_ROOT))
-    if IS_FROZEN
+    if getattr(sys, "frozen", False)
     else APP_ROOT
 )
 DATA_DIR: Path = (

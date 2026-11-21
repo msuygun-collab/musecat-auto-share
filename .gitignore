@@ -11,10 +11,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Build / PyInstaller / Release installer artifacts (upload Setup.exe to GitHub Releases!)
+# Build / PyInstaller / Nuitka / Release installer artifacts (upload Setup.exe to GitHub Releases!)
 build/
 dist/
 Release/
+Output/
+main.build/
+main.dist/
+main.onefile-build/
+MuseCat.exe
 MuseCat Setup/*.exe
 *.spec
 
